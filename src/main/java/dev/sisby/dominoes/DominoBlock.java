@@ -24,6 +24,8 @@ import net.minecraft.world.World;
 import net.minecraft.world.block.WireOrientation;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.List;
+
 public class DominoBlock extends Block {
 	protected static final VoxelShape VOXEL_NS = VoxelShapes.cuboid(0.25, 0, 0.4375, 0.75, 0.875, 0.5625);
 	protected static final VoxelShape VOXEL_NS_BACKWARDS = VoxelShapes.cuboid(0.25, 0, 0, 0.75, 0.125, 0.875);
@@ -75,11 +77,8 @@ public class DominoBlock extends Block {
 			world.setBlockState(pos, state.with(COLLAPSED, Collapsed.NONE));
 			world.playSound(player, pos, SoundEvents.BLOCK_STONE_STEP, SoundCategory.BLOCKS);
 			return ActionResult.SUCCESS;
-		} else if (state.get(SHAPE).forwards() == hit.getSide()) {
-			collapse(state, world, pos, player, true, true);
-			return ActionResult.SUCCESS;
-		} else if (state.get(SHAPE).forwards() == hit.getSide().getOpposite()) {
-			collapse(state, world, pos, player, false, true);
+		} else if (state.get(SHAPE).connections().contains(hit.getSide())) {
+			collapse(state, world, pos, player, state.get(SHAPE).connections().getFirst() == hit.getSide(), true);
 			return ActionResult.SUCCESS;
 		}
 		return super.onUse(state, world, pos, player, hit);
@@ -107,12 +106,12 @@ public class DominoBlock extends Block {
 	@Override
 	protected void neighborUpdate(BlockState state, World world, BlockPos pos, Block sourceBlock, @Nullable WireOrientation wireOrientation, boolean notify) {
 		if (state.get(COLLAPSED) == Collapsed.NONE) {
-			BlockState back = world.getBlockState(pos.offset(state.get(SHAPE).forwards().getOpposite()));
-			BlockState front = world.getBlockState(pos.offset(state.get(SHAPE).forwards()));
-			if (back.isOf(state.getBlock()) && back.get(COLLAPSING) && back.get(SHAPE) == state.get(SHAPE) && back.get(COLLAPSED) == Collapsed.BACKWARDS) {
-				collapse(state, world, pos, null, false, false);
-			} else if (front.isOf(state.getBlock()) && front.get(COLLAPSING) && front.get(SHAPE) == state.get(SHAPE) && front.get(COLLAPSED) == Collapsed.FORWARDS) {
-				collapse(state, world, pos, null, true, false);
+			for (Direction dir : state.get(SHAPE).connections()) {
+				BlockState neighbour = world.getBlockState(pos.offset(dir));
+				boolean forwards = dir == state.get(SHAPE).connections().getFirst();
+				if (neighbour.isOf(state.getBlock()) && neighbour.get(COLLAPSING) && neighbour.get(SHAPE) == state.get(SHAPE) && neighbour.get(COLLAPSED) == (forwards ? Collapsed.FORWARDS : Collapsed.BACKWARDS)) {
+					collapse(state, world, pos, null, forwards, false);
+				}
 			}
 		}
 	}
@@ -135,15 +134,15 @@ public class DominoBlock extends Block {
 	}
 
 	public enum Shape implements StringIdentifiable {
-		NORTH_SOUTH("north_south", Direction.NORTH),
-		EAST_WEST("east_west", Direction.EAST);
+		NORTH_SOUTH("north_south", List.of(Direction.NORTH, Direction.SOUTH)),
+		EAST_WEST("east_west", List.of(Direction.EAST, Direction.WEST));
 
 		private final String name;
-		private final Direction forwards;
+		private final List<Direction> connections;
 
-		Shape(String name, Direction forwards) {
+		Shape(String name, List<Direction> connections) {
 			this.name = name;
-			this.forwards = forwards;
+			this.connections = connections;
 		}
 
 		@Override
@@ -151,8 +150,8 @@ public class DominoBlock extends Block {
 			return name;
 		}
 
-		public Direction forwards() {
-			return forwards;
+		public List<Direction> connections() {
+			return connections;
 		}
 	}
 }
