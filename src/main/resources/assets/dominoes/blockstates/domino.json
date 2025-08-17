@@ -1,25 +1,25 @@
 {
 	"variants": {
 		"shape=east_west,collapsed=none": {
-			"model": "dominoes:block/dominoes",
+			"model": "dominoes:block/domino",
 			"y": 90
 		},
 		"shape=north_south,collapsed=none": {
-			"model": "dominoes:block/dominoes"
+			"model": "dominoes:block/domino"
 		},
 		"shape=east_west,collapsed=forwards": {
-			"model": "dominoes:block/dominoes_forwards",
+			"model": "dominoes:block/domino_forwards",
 			"y": 90
 		},
 		"shape=north_south,collapsed=forwards": {
-			"model": "dominoes:block/dominoes_forwards"
+			"model": "dominoes:block/domino_forwards"
 		},
 		"shape=east_west,collapsed=backwards": {
-			"model": "dominoes:block/dominoes_backwards",
+			"model": "dominoes:block/domino_backwards",
 			"y": 90
 		},
 		"shape=north_south,collapsed=backwards": {
-			"model": "dominoes:block/dominoes_backwards"
+			"model": "dominoes:block/domino_backwards"
 		}
 	}
 }

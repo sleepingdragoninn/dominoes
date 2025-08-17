@@ -1,0 +1,12 @@
+{
+	"type": "minecraft:crafting_shapeless",
+	"ingredients": [
+		"minecraft:black_terracotta",
+		"minecraft:white_dye",
+		"minecraft:wheat"
+	],
+	"result": {
+		"count": 18,
+		"id": "dominoes:unfired_domino"
+	}
+}

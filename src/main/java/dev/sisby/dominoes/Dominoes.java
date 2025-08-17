@@ -21,19 +21,25 @@ import org.slf4j.LoggerFactory;
 public class Dominoes implements ModInitializer {
 	public static final String ID = "dominoes";
 	public static final Logger LOGGER = LoggerFactory.getLogger(ID);
-	public static final DominoBlock DOMINO_BLOCK = Registry.register(Registries.BLOCK, Identifier.of(ID, "dominoes"), new DominoBlock(AbstractBlock.Settings.create()
-		.registryKey(RegistryKey.of(RegistryKeys.BLOCK, Identifier.of(ID, "dominoes")))
+	public static final DominoBlock DOMINO_BLOCK = Registry.register(Registries.BLOCK, Identifier.of(ID, "domino"), new DominoBlock(AbstractBlock.Settings.create()
+		.registryKey(RegistryKey.of(RegistryKeys.BLOCK, Identifier.of(ID, "domino")))
 		.mapColor(MapColor.CLEAR)
 		.strength(0.5F)
 		.sounds(BlockSoundGroup.STONE)
 	));
-	public static final BlockItem DOMINO_ITEM = Registry.register(Registries.ITEM, Identifier.of(ID, "dominoes"), new BlockItem(DOMINO_BLOCK, new Item.Settings()
-		.registryKey(RegistryKey.of(RegistryKeys.ITEM, Identifier.of(ID, "dominoes")))
+	public static final Item UNFIRED_DOMINO_ITEM = Registry.register(Registries.ITEM, Identifier.of(ID, "unfired_domino"), new Item(new Item.Settings()
+		.registryKey(RegistryKey.of(RegistryKeys.ITEM, Identifier.of(ID, "unfired_domino")))
+	));
+	public static final BlockItem DOMINO_ITEM = Registry.register(Registries.ITEM, Identifier.of(ID, "domino"), new BlockItem(DOMINO_BLOCK, new Item.Settings()
+		.registryKey(RegistryKey.of(RegistryKeys.ITEM, Identifier.of(ID, "domino")))
 	));
 	public static final ItemGroup ITEM_GROUP = Registry.register(Registries.ITEM_GROUP, Identifier.of(ID, "items"), FabricItemGroup.builder()
 		.displayName(Text.translatable("itemGroup.%s.%s".formatted(ID, "items")))
 		.icon(() -> new ItemStack(DOMINO_ITEM))
-		.entries((c, e) -> e.add(DOMINO_ITEM))
+		.entries((c, e) -> {
+			e.add(UNFIRED_DOMINO_ITEM);
+			e.add(DOMINO_ITEM);
+		})
 		.build()
 	);
 

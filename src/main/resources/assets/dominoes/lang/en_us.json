@@ -1,5 +1,6 @@
 {
-	"block.dominoes.dominoes": "Domino Block",
-	"item.dominoes.dominoes": "Domino Block",
+	"block.dominoes.domino": "Domino",
+	"item.dominoes.unfired_domino": "Unfired Domino",
+	"item.dominoes.domino": "Domino",
 	"itemGroup.dominoes.items": "Dominoes"
 }

@@ -2,8 +2,8 @@
 	"parent": "minecraft:generated",
 	"texture_size": [32, 32],
 	"textures": {
-		"0": "dominoes:block/dominoes",
-		"particle": "dominoes:block/dominoes"
+		"0": "dominoes:block/domino",
+		"particle": "dominoes:block/domino"
 	},
 	"elements": [
 		{
