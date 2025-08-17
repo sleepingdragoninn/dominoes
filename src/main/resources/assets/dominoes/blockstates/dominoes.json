@@ -1,0 +1,11 @@
+{
+	"variants": {
+		"shape=east_west": {
+			"model": "dominoes:block/dominoes",
+			"y": 90
+		},
+		"shape=north_south": {
+			"model": "dominoes:block/dominoes"
+		}
+	}
+}

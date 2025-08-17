@@ -1,2 +1,5 @@
 {
+	"block.dominoes.dominoes": "Domino Block",
+	"item.dominoes.dominoes": "Domino Block",
+	"itemGroup.dominoes.items": "Dominoes"
 }
