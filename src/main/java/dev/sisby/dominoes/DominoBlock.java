@@ -16,6 +16,7 @@ import net.minecraft.util.StringIdentifiable;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
+import net.minecraft.util.math.DirectionTransformation;
 import net.minecraft.util.math.random.Random;
 import net.minecraft.util.shape.VoxelShape;
 import net.minecraft.util.shape.VoxelShapes;
@@ -28,11 +29,11 @@ import java.util.List;
 
 public class DominoBlock extends Block {
 	protected static final VoxelShape VOXEL_NS = VoxelShapes.cuboid(0.25, 0, 0.4375, 0.75, 0.875, 0.5625);
-	protected static final VoxelShape VOXEL_NS_BACKWARDS = VoxelShapes.cuboid(0.25, 0, 0, 0.75, 0.125, 0.875);
 	protected static final VoxelShape VOXEL_NS_FORWARDS = VoxelShapes.cuboid(0.25, 0, 0.125, 0.75, 0.125, 1);
-	protected static final VoxelShape VOXEL_EW = VoxelShapes.cuboid(0.4375, 0, 0.25, 0.5625, 0.875, 0.75);
-	protected static final VoxelShape VOXEL_EW_BACKWARDS = VoxelShapes.cuboid(0.125, 0, 0.25, 1, 0.125, 0.75);
-	protected static final VoxelShape VOXEL_EW_FORWARDS = VoxelShapes.cuboid(0, 0, 0.25, 0.875, 0.125, 0.75);
+	protected static final VoxelShape VOXEL_NS_BACKWARDS = VoxelShapes.transform(VOXEL_NS_FORWARDS, DirectionTransformation.ROT_180_FACE_XZ);
+	protected static final VoxelShape VOXEL_EW = VoxelShapes.transform(VOXEL_NS, DirectionTransformation.SWAP_XZ);
+	protected static final VoxelShape VOXEL_EW_BACKWARDS = VoxelShapes.transform(VOXEL_NS_FORWARDS, DirectionTransformation.SWAP_XZ);
+	protected static final VoxelShape VOXEL_EW_FORWARDS = VoxelShapes.transform(VOXEL_NS_BACKWARDS, DirectionTransformation.SWAP_XZ);
 	public static final EnumProperty<Collapsed> COLLAPSED = EnumProperty.of("collapsed", Collapsed.class);
 	public static final EnumProperty<Shape> SHAPE = EnumProperty.of("shape", Shape.class);
 	public static final BooleanProperty COLLAPSING = BooleanProperty.of("collapsing");
