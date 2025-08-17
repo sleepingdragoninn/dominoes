@@ -1,11 +1,25 @@
 {
 	"variants": {
-		"shape=east_west": {
+		"shape=east_west,collapsed=none": {
 			"model": "dominoes:block/dominoes",
 			"y": 90
 		},
-		"shape=north_south": {
+		"shape=north_south,collapsed=none": {
 			"model": "dominoes:block/dominoes"
+		},
+		"shape=east_west,collapsed=forwards": {
+			"model": "dominoes:block/dominoes_forwards",
+			"y": 90
+		},
+		"shape=north_south,collapsed=forwards": {
+			"model": "dominoes:block/dominoes_forwards"
+		},
+		"shape=east_west,collapsed=backwards": {
+			"model": "dominoes:block/dominoes_backwards",
+			"y": 90
+		},
+		"shape=north_south,collapsed=backwards": {
+			"model": "dominoes:block/dominoes_backwards"
 		}
 	}
 }
