@@ -1,5 +1,5 @@
 <!--suppress HtmlDeprecatedTag, XmlDeprecatedElement -->
-<center><img alt="mod preview" src="https://cdn.modrinth.com/data/2iv3rshg/images/20a08fcc22d19e6717a70701aab2dd2f0ad074ec.png"/></center>
+<center><img alt="mod preview" src="https://cdn.modrinth.com/data/2iv3rshg/images/12312784392755bd4f1873fcbfd2f6d4bbcac451.png"/></center>
 
 <center>
 Collapsible domino blocks!
