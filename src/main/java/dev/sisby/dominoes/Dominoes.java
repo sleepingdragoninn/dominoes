@@ -4,6 +4,7 @@ import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.itemgroup.v1.FabricItemGroup;
 import net.minecraft.block.AbstractBlock;
 import net.minecraft.block.MapColor;
+import net.minecraft.block.piston.PistonBehavior;
 import net.minecraft.item.BlockItem;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemGroup;
@@ -25,6 +26,7 @@ public class Dominoes implements ModInitializer {
 		.registryKey(RegistryKey.of(RegistryKeys.BLOCK, Identifier.of(ID, "domino")))
 		.mapColor(MapColor.CLEAR)
 		.strength(0.5F)
+		.pistonBehavior(PistonBehavior.BLOCK)
 		.sounds(BlockSoundGroup.STONE)
 	));
 	public static final Item UNFIRED_DOMINO_ITEM = Registry.register(Registries.ITEM, Identifier.of(ID, "unfired_domino"), new Item(new Item.Settings()

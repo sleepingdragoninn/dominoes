@@ -1,11 +1,11 @@
 package dev.sisby.dominoes;
 
-import com.mojang.serialization.MapCodec;
-import net.minecraft.block.AnvilBlock;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
+import net.minecraft.block.Falling;
 import net.minecraft.block.FallingBlock;
 import net.minecraft.block.ShapeContext;
+import net.minecraft.entity.FallingBlockEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemPlacementContext;
 import net.minecraft.server.world.ServerWorld;
@@ -31,8 +31,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
-public class DominoBlock extends FallingBlock {
-	public static final MapCodec<AnvilBlock> CODEC = createCodec(AnvilBlock::new);
+public class DominoBlock extends Block implements Falling {
 	protected static final VoxelShape VOXEL_NS = VoxelShapes.cuboid(0.25, 0, 0.4375, 0.75, 0.875, 0.5625);
 	protected static final VoxelShape VOXEL_NS_FORWARDS = VoxelShapes.cuboid(0.25, 0, 0.125, 0.75, 0.125, 1);
 	protected static final VoxelShape VOXEL_NS_BACKWARDS = VoxelShapes.transform(VOXEL_NS_FORWARDS, DirectionTransformation.ROT_180_FACE_XZ);
@@ -66,11 +65,6 @@ public class DominoBlock extends FallingBlock {
 	}
 
 	@Override
-	protected MapCodec<? extends FallingBlock> getCodec() {
-		return CODEC;
-	}
-
-	@Override
 	protected void appendProperties(StateManager.Builder<Block, BlockState> builder) {
 		builder.add(COLLAPSED, SHAPE, COLLAPSING);
 	}
@@ -87,6 +81,11 @@ public class DominoBlock extends FallingBlock {
 			case DOWN, SOUTH, NORTH, UP -> Shape.NORTH_SOUTH;
 			case WEST, EAST -> Shape.EAST_WEST;
 		};
+	}
+
+	@Override
+	public void onLanding(World world, BlockPos pos, BlockState fallingBlockState, BlockState currentStateInPos, FallingBlockEntity fallingBlockEntity) {
+		collapse(fallingBlockState, world, pos, null, true, true);
 	}
 
 	@Override
@@ -115,7 +114,7 @@ public class DominoBlock extends FallingBlock {
 	@Override
 	protected ActionResult onUse(BlockState state, World world, BlockPos pos, PlayerEntity player, BlockHitResult hit) {
 		if (state.get(COLLAPSED) != Collapsed.NONE) {
-			world.setBlockState(pos, state.with(COLLAPSED, Collapsed.NONE));
+			world.setBlockState(pos, state.with(COLLAPSED, Collapsed.NONE).with(COLLAPSING, false));
 			world.playSound(player, pos, SoundEvents.BLOCK_STONE_STEP, SoundCategory.BLOCKS);
 			return ActionResult.SUCCESS;
 		} else if (state.get(SHAPE).connections().contains(hit.getSide())) {
@@ -126,32 +125,33 @@ public class DominoBlock extends FallingBlock {
 	}
 
 	private void collapse(BlockState state, World world, BlockPos pos, PlayerEntity player, boolean forwards, boolean initial) {
-		world.setBlockState(pos, state.with(COLLAPSED, forwards ? Collapsed.FORWARDS : Collapsed.BACKWARDS));
-		world.playSound(player, pos, initial ? SoundEvents.BLOCK_STONE_PLACE : SoundEvents.BLOCK_STONE_FALL, SoundCategory.BLOCKS);
+		if (initial) world.playSound(player, pos, SoundEvents.BLOCK_STONE_PLACE, SoundCategory.BLOCKS);
+		world.setBlockState(pos, state.with(COLLAPSING, true).with(COLLAPSED, forwards ? Collapsed.FORWARDS : Collapsed.BACKWARDS), Block.NOTIFY_LISTENERS, 0);
 		world.scheduleBlockTick(pos, state.getBlock(), initial ? 5 : 2);
 	}
 
 	@Override
 	protected void scheduledTick(BlockState state, ServerWorld world, BlockPos pos, Random random) {
-		if (state.get(COLLAPSING)) { // collapsing done!
-			world.setBlockState(pos, state.with(COLLAPSING, false));
-		} else if (state.get(COLLAPSED) == Collapsed.NONE) { // righted before update!
-			world.setBlockState(pos, state.with(COLLAPSING, false));
-		} else {
-			world.setBlockState(pos, state.with(COLLAPSING, true));
+		if (state.get(COLLAPSING)) {
+			world.playSound(null, pos, SoundEvents.BLOCK_STONE_FALL, SoundCategory.BLOCKS);
 			for (Direction dir : state.get(SHAPE).connections()) {
 				for (int i = -1; i <= 1; i++) {
 					world.updateNeighbor(pos.offset(dir).offset(Direction.Axis.Y, i), state.getBlock(),  null);
 				}
 			}
-			world.scheduleBlockTick(pos, state.getBlock(), 1);
+			world.setBlockState(pos, state.with(COLLAPSING, false));
 		}
-		super.scheduledTick(state, world, pos, random);
+	}
+
+	private void checkFall(BlockState state, ServerWorld world, BlockPos pos) {
+		if (FallingBlock.canFallThrough(world.getBlockState(pos.down())) && pos.getY() >= world.getBottomY()) {
+			FallingBlockEntity.spawnFromBlock(world, pos, state);
+		}
 	}
 
 	@Override
-	public int getColor(BlockState state, BlockView world, BlockPos pos) {
-		return 0;
+	protected void onBlockAdded(BlockState state, World world, BlockPos pos, BlockState oldState, boolean notify) {
+		if (world instanceof ServerWorld sw) checkFall(state, sw, pos);
 	}
 
 	@Override
@@ -171,6 +171,7 @@ public class DominoBlock extends FallingBlock {
 				}
 			}
 		}
+		if (world instanceof ServerWorld sw) checkFall(state, sw, pos);
 	}
 
 	public enum Collapsed implements StringIdentifiable {
