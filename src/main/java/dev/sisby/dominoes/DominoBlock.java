@@ -5,6 +5,7 @@ import net.minecraft.block.BlockState;
 import net.minecraft.block.Falling;
 import net.minecraft.block.FallingBlock;
 import net.minecraft.block.ShapeContext;
+import net.minecraft.block.entity.PistonBlockEntity;
 import net.minecraft.entity.FallingBlockEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemPlacementContext;
@@ -26,6 +27,7 @@ import net.minecraft.util.shape.VoxelShape;
 import net.minecraft.util.shape.VoxelShapes;
 import net.minecraft.world.BlockView;
 import net.minecraft.world.World;
+import net.minecraft.world.WorldView;
 import net.minecraft.world.block.WireOrientation;
 import org.jetbrains.annotations.Nullable;
 
@@ -94,6 +96,12 @@ public class DominoBlock extends Block implements Falling {
 	}
 
 	@Override
+	protected boolean canPlaceAt(BlockState state, WorldView world, BlockPos pos) {
+		BlockPos blockPos = pos.down();
+		return world.getBlockState(blockPos).isSideSolidFullSquare(world, blockPos, Direction.UP);
+	}
+
+	@Override
 	public BlockState getPlacementState(ItemPlacementContext ctx) {
 		BlockState state = ctx.getWorld().getBlockState(ctx.getBlockPos());
 		if (state.isOf(this)) {
@@ -158,15 +166,20 @@ public class DominoBlock extends Block implements Falling {
 	protected void neighborUpdate(BlockState state, World world, BlockPos pos, Block sourceBlock, @Nullable WireOrientation wireOrientation, boolean notify) {
 		if (state.get(COLLAPSED) == Collapsed.NONE) {
 			for (Direction dir : state.get(SHAPE).connections()) {
+				boolean forwards = dir == state.get(SHAPE).connections().getFirst(); // whether this "hit" comes from the leading side
 				for (int i = -1; i <= 1; i++) {
-					BlockState neighbour = world.getBlockState(pos.offset(dir).offset(Direction.Axis.Y, i));
+					BlockPos neighbourPos = pos.offset(dir).offset(Direction.Axis.Y, i);
+					BlockState neighbour = world.getBlockState(neighbourPos);
 					// if a connected collapse is happening
 					if (neighbour.isOf(state.getBlock()) && neighbour.get(COLLAPSING) && neighbour.get(SHAPE).connections().contains(dir.getOpposite())) {
 						// if the collapse is in the direction that affects us
 						if (neighbour.get(COLLAPSED) == (neighbour.get(SHAPE).connections().getFirst() != dir.getOpposite() ? Collapsed.FORWARDS : Collapsed.BACKWARDS)) {
-							boolean forwards = dir == state.get(SHAPE).connections().getFirst(); // whether we've been "hit" from the leading side
 							collapse(state, world, pos, null, forwards, false);
 						}
+					}
+					// if a piston is being pushed
+					if (i == 0 && world.getBlockEntity(neighbourPos) instanceof PistonBlockEntity pbe && pbe.isExtending() && pbe.getFacing() == dir.getOpposite()) {
+						collapse(state, world, pos, null, forwards, true);
 					}
 				}
 			}

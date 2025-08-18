@@ -25,8 +25,8 @@ public class Dominoes implements ModInitializer {
 	public static final DominoBlock DOMINO_BLOCK = Registry.register(Registries.BLOCK, Identifier.of(ID, "domino"), new DominoBlock(AbstractBlock.Settings.create()
 		.registryKey(RegistryKey.of(RegistryKeys.BLOCK, Identifier.of(ID, "domino")))
 		.mapColor(MapColor.CLEAR)
-		.strength(0.5F)
-		.pistonBehavior(PistonBehavior.BLOCK)
+		.breakInstantly()
+		.pistonBehavior(PistonBehavior.DESTROY)
 		.sounds(BlockSoundGroup.STONE)
 	));
 	public static final Item UNFIRED_DOMINO_ITEM = Registry.register(Registries.ITEM, Identifier.of(ID, "unfired_domino"), new Item(new Item.Settings()
