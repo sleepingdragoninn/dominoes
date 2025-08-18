@@ -1,7 +1,10 @@
 package dev.sisby.dominoes;
 
+import com.mojang.serialization.MapCodec;
+import net.minecraft.block.AnvilBlock;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
+import net.minecraft.block.FallingBlock;
 import net.minecraft.block.ShapeContext;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemPlacementContext;
@@ -28,7 +31,8 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
-public class DominoBlock extends Block {
+public class DominoBlock extends FallingBlock {
+	public static final MapCodec<AnvilBlock> CODEC = createCodec(AnvilBlock::new);
 	protected static final VoxelShape VOXEL_NS = VoxelShapes.cuboid(0.25, 0, 0.4375, 0.75, 0.875, 0.5625);
 	protected static final VoxelShape VOXEL_NS_FORWARDS = VoxelShapes.cuboid(0.25, 0, 0.125, 0.75, 0.125, 1);
 	protected static final VoxelShape VOXEL_NS_BACKWARDS = VoxelShapes.transform(VOXEL_NS_FORWARDS, DirectionTransformation.ROT_180_FACE_XZ);
@@ -59,6 +63,11 @@ public class DominoBlock extends Block {
 	public DominoBlock(Settings settings) {
 		super(settings);
 		this.setDefaultState(this.stateManager.getDefaultState().with(COLLAPSED, Collapsed.NONE).with(SHAPE, Shape.NORTH_SOUTH).with(COLLAPSING, false));
+	}
+
+	@Override
+	protected MapCodec<? extends FallingBlock> getCodec() {
+		return CODEC;
 	}
 
 	@Override
@@ -130,22 +139,34 @@ public class DominoBlock extends Block {
 			world.setBlockState(pos, state.with(COLLAPSING, false));
 		} else {
 			world.setBlockState(pos, state.with(COLLAPSING, true));
-			world.updateNeighbors(pos, state.getBlock());
+			for (Direction dir : state.get(SHAPE).connections()) {
+				for (int i = -1; i <= 1; i++) {
+					world.updateNeighbor(pos.offset(dir).offset(Direction.Axis.Y, i), state.getBlock(),  null);
+				}
+			}
 			world.scheduleBlockTick(pos, state.getBlock(), 1);
 		}
+		super.scheduledTick(state, world, pos, random);
+	}
+
+	@Override
+	public int getColor(BlockState state, BlockView world, BlockPos pos) {
+		return 0;
 	}
 
 	@Override
 	protected void neighborUpdate(BlockState state, World world, BlockPos pos, Block sourceBlock, @Nullable WireOrientation wireOrientation, boolean notify) {
 		if (state.get(COLLAPSED) == Collapsed.NONE) {
 			for (Direction dir : state.get(SHAPE).connections()) {
-				BlockState neighbour = world.getBlockState(pos.offset(dir));
-				// if a connected collapse is happening
-				if (neighbour.isOf(state.getBlock()) && neighbour.get(COLLAPSING) && neighbour.get(SHAPE).connections().contains(dir.getOpposite())) {
-					// if the collapse is in the direction that affects us
-					if (neighbour.get(COLLAPSED) == (neighbour.get(SHAPE).connections().getFirst() != dir.getOpposite() ? Collapsed.FORWARDS : Collapsed.BACKWARDS)) {
-						boolean forwards = dir == state.get(SHAPE).connections().getFirst(); // whether we've been "hit" from the leading side
-						collapse(state, world, pos, null, forwards, false);
+				for (int i = -1; i <= 1; i++) {
+					BlockState neighbour = world.getBlockState(pos.offset(dir).offset(Direction.Axis.Y, i));
+					// if a connected collapse is happening
+					if (neighbour.isOf(state.getBlock()) && neighbour.get(COLLAPSING) && neighbour.get(SHAPE).connections().contains(dir.getOpposite())) {
+						// if the collapse is in the direction that affects us
+						if (neighbour.get(COLLAPSED) == (neighbour.get(SHAPE).connections().getFirst() != dir.getOpposite() ? Collapsed.FORWARDS : Collapsed.BACKWARDS)) {
+							boolean forwards = dir == state.get(SHAPE).connections().getFirst(); // whether we've been "hit" from the leading side
+							collapse(state, world, pos, null, forwards, false);
+						}
 					}
 				}
 			}
