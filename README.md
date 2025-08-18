@@ -8,12 +8,18 @@ Collapsible domino blocks!
 ---
 
 Adds domino blocks to the game, which can:
-- Be placed in either horizontal axis
 - Be collapsed (right click) in either direction
 - Propagate collapse to other aligned dominoes in the direction of collapse
 - Be reset (right click) so they can be collapsed again
+- Be placed horizontally, or on the very corner of a block to create a "turn"
+- Be doubled up:
+  - On corners, to create a "double" corner, capable of splitting a collapse-chain
+  - On straights, to create a "stacked" straight, which spawns a collapsing domino in front
+- Fall, when exposed to gravity - propagating an existing collapse, or collapsing forwards otherwise.
+- Trigger pressure plates in front of them in the direction of collapse
+- Be collapsed by a piston head extended in a connecting direction
 
-dominoes can be crafted by combining **Black Terracotta** with **Wheat** and **White Dye**, then firing in a furnace.
+Dominoes can be crafted by combining **Black Terracotta** with **Wheat** and **White Dye**, then firing in a furnace.
 
 ---
 
