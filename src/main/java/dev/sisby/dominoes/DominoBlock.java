@@ -1,6 +1,7 @@
 package dev.sisby.dominoes;
 
 import dev.sisby.dominoes.mixin.AbstractPressurePlateBlockAccessor;
+import dev.sisby.dominoes.mixin.FallingBlockEntityAccessor;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Falling;
@@ -43,6 +44,11 @@ public class DominoBlock extends Block implements Falling {
 	protected static final VoxelShape VOXEL_EW_BACKWARDS = VoxelShapes.transform(VOXEL_NS_FORWARDS, DirectionTransformation.SWAP_XZ);
 	protected static final VoxelShape VOXEL_EW_FORWARDS = VoxelShapes.transform(VOXEL_NS_BACKWARDS, DirectionTransformation.SWAP_XZ);
 	protected static final VoxelShape VOXEL_NE = VoxelShapes.cuboid(0.5, 0, 0.125, 1, 0.875, 0.25);
+	protected static final VoxelShape VOXEL_NS_STACK = VoxelShapes.union(
+		VoxelShapes.cuboid(0.25, 0, 0.125, 0.75, 0.875, 0.25),
+		VoxelShapes.cuboid(0.25, 0, 0.75, 0.75, 0.875, 0.875)
+	);
+	protected static final VoxelShape VOXEL_EW_STACK = VoxelShapes.transform(VOXEL_NS_STACK, DirectionTransformation.SWAP_XZ);
 	protected static final VoxelShape VOXEL_ES = VoxelShapes.transform(VOXEL_NE, DirectionTransformation.ROT_90_Y_NEG);
 	protected static final VoxelShape VOXEL_SW = VoxelShapes.transform(VOXEL_ES, DirectionTransformation.ROT_90_Y_NEG);
 	protected static final VoxelShape VOXEL_WN = VoxelShapes.transform(VOXEL_SW, DirectionTransformation.ROT_90_Y_NEG);
@@ -73,13 +79,17 @@ public class DominoBlock extends Block implements Falling {
 		builder.add(COLLAPSED, SHAPE, COLLAPSING);
 	}
 
-	private static Shape getPlacementShape(ItemPlacementContext ctx) {
+	private static Shape getPlacementShape(ItemPlacementContext ctx, boolean canStack) {
 		if (ctx.getSide() == Direction.UP) {
 			Vec3d offset = ctx.getHitPos().subtract(Vec3d.of(ctx.getBlockPos()));
 			if (offset.getX() < 0.125 && offset.getZ() < 0.125) return Shape.WEST_NORTH;
 			if (offset.getX() > 0.875 && offset.getZ() < 0.125) return Shape.NORTH_EAST;
 			if (offset.getX() > 0.875 && offset.getZ() > 0.875) return Shape.EAST_SOUTH;
 			if (offset.getX() < 0.125 && offset.getZ() > 0.875) return Shape.SOUTH_WEST;
+			if (canStack) {
+				if (offset.getX() < 0.125 || offset.getX() > 0.875) return Shape.EAST_WEST_STACK;
+				if (offset.getZ() < 0.125 || offset.getZ() > 0.875) return Shape.NORTH_SOUTH_STACK;
+			}
 		}
 		return switch (ctx.getHorizontalPlayerFacing()) {
 			case DOWN, SOUTH, NORTH, UP -> Shape.NORTH_SOUTH;
@@ -94,7 +104,11 @@ public class DominoBlock extends Block implements Falling {
 
 	@Override
 	protected boolean canReplace(BlockState state, ItemPlacementContext ctx) {
-		return !ctx.shouldCancelInteraction() && ctx.getStack().getItem() == this.asItem() && Shape.CORNERS.contains(state.get(SHAPE)) && Shape.CORNERS.get((Shape.CORNERS.indexOf(state.get(SHAPE)) - 1 + Shape.CORNERS.size()) % Shape.CORNERS.size()) == getPlacementShape(ctx) || super.canReplace(state, ctx);
+		if (super.canReplace(state, ctx)) return true;
+		if (!(!ctx.shouldCancelInteraction() && ctx.getStack().getItem() == this.asItem())) return false;
+		Shape newShape = getPlacementShape(ctx, true);
+		return (Shape.CORNERS.contains(state.get(SHAPE)) && Shape.CORNERS.get((Shape.CORNERS.indexOf(state.get(SHAPE)) - 1 + Shape.CORNERS.size()) % Shape.CORNERS.size()) == newShape)
+				|| (Shape.STRAIGHTS.contains(state.get(SHAPE)) && Shape.STACKS.get(Shape.STRAIGHTS.indexOf(state.get(SHAPE))) == newShape);
 	}
 
 	@Override
@@ -107,9 +121,11 @@ public class DominoBlock extends Block implements Falling {
 	public BlockState getPlacementState(ItemPlacementContext ctx) {
 		BlockState state = ctx.getWorld().getBlockState(ctx.getBlockPos());
 		if (state.isOf(this)) {
-			return state.with(SHAPE, Shape.DOUBLES.get(Shape.CORNERS.indexOf(state.get(SHAPE))));
+			Shape newShape = getPlacementShape(ctx, true);
+			if (Shape.CORNERS.contains(newShape)) newShape = Shape.DOUBLES.get(Shape.CORNERS.indexOf(state.get(SHAPE)));
+			return state.with(SHAPE, newShape);
 		}
-		return this.getDefaultState().with(SHAPE, getPlacementShape(ctx));
+		return this.getDefaultState().with(SHAPE, getPlacementShape(ctx, false));
 	}
 
 	@Override
@@ -135,8 +151,18 @@ public class DominoBlock extends Block implements Falling {
 	}
 
 	private void collapse(BlockState state, World world, BlockPos pos, PlayerEntity player, boolean forwards, boolean initial) {
+		Shape shape = state.get(SHAPE);
+		if (Shape.STACKS.contains(shape)) {
+			BlockPos ahead = pos.offset(shape.connections().get(forwards ? 1 : 0));
+
+			// spawn a falling domino ahead
+			FallingBlockEntity fallingBlockEntity = FallingBlockEntityAccessor.invokeConstructor(
+				world, ahead.getX() + 0.5, ahead.getY(), ahead.getZ() + 0.5, state.with(SHAPE, Shape.STRAIGHTS.get(Shape.STACKS.indexOf(shape))).with(COLLAPSING, true).with(COLLAPSED, forwards ? Collapsed.FORWARDS : Collapsed.BACKWARDS)
+			);
+			world.spawnEntity(fallingBlockEntity);
+		}
 		world.playSound(player, pos, initial ? SoundEvents.BLOCK_STONE_PLACE : SoundEvents.BLOCK_STONE_FALL, SoundCategory.BLOCKS);
-		world.setBlockState(pos, state.with(COLLAPSING, true).with(COLLAPSED, forwards ? Collapsed.FORWARDS : Collapsed.BACKWARDS), Block.NOTIFY_LISTENERS, 0);
+		world.setBlockState(pos, state.with(COLLAPSING, true).with(COLLAPSED, forwards ? Collapsed.FORWARDS : Collapsed.BACKWARDS).with(SHAPE, Shape.STACKS.contains(shape) ? Shape.STRAIGHTS.get(Shape.STACKS.indexOf(shape)) : shape), Block.NOTIFY_LISTENERS, 0);
 		world.scheduleBlockTick(pos, state.getBlock(), initial ? 5 : 2);
 	}
 
@@ -220,6 +246,9 @@ public class DominoBlock extends Block implements Falling {
 		// straights
 		NORTH_SOUTH("north_south", List.of(Direction.NORTH, Direction.SOUTH), VOXEL_NS, VOXEL_NS_FORWARDS, VOXEL_NS_BACKWARDS),
 		EAST_WEST("east_west", List.of(Direction.EAST, Direction.WEST), VOXEL_EW, VOXEL_EW_FORWARDS, VOXEL_EW_BACKWARDS),
+		// straight stacks
+		NORTH_SOUTH_STACK("north_south_stack", List.of(Direction.NORTH, Direction.SOUTH), VOXEL_NS_STACK, VOXEL_NS_FORWARDS, VOXEL_NS_BACKWARDS),
+		EAST_WEST_STACK("east_west_stack", List.of(Direction.EAST, Direction.WEST), VOXEL_EW_STACK, VOXEL_EW_FORWARDS, VOXEL_EW_BACKWARDS),
 		// corners
 		NORTH_EAST("north_east", List.of(Direction.NORTH, Direction.EAST), VOXEL_NE, VOXEL_NE_COLLAPSED, VOXEL_NE_COLLAPSED),
 		EAST_SOUTH("east_south", List.of(Direction.EAST, Direction.SOUTH), VOXEL_ES, VOXEL_ES_COLLAPSED, VOXEL_ES_COLLAPSED),
@@ -231,8 +260,10 @@ public class DominoBlock extends Block implements Falling {
 		SOUTH_WEST_EAST("south_west_east", List.of(Direction.SOUTH, Direction.WEST, Direction.EAST), VOXEL_SWE, VOXEL_SWE_COLLAPSED, VOXEL_SWE_COLLAPSED),
 		WEST_NORTH_SOUTH("west_north_south", List.of(Direction.WEST, Direction.NORTH, Direction.SOUTH), VOXEL_WNS, VOXEL_WNS_COLLAPSED, VOXEL_WNS_COLLAPSED);
 
-		public static final List<Shape> CORNERS = List.of(Shape.NORTH_EAST, Shape.EAST_SOUTH, Shape.SOUTH_WEST, Shape.WEST_NORTH);
-		public static final List<Shape> DOUBLES = List.of(Shape.NORTH_EAST_WEST, Shape.EAST_SOUTH_NORTH, Shape.SOUTH_WEST_EAST, Shape.WEST_NORTH_SOUTH);
+		public static final List<Shape> STRAIGHTS = List.of(NORTH_SOUTH, EAST_WEST);
+		public static final List<Shape> STACKS = List.of(NORTH_SOUTH_STACK, EAST_WEST_STACK);
+		public static final List<Shape> CORNERS = List.of(NORTH_EAST, EAST_SOUTH, SOUTH_WEST, WEST_NORTH);
+		public static final List<Shape> DOUBLES = List.of(NORTH_EAST_WEST, EAST_SOUTH_NORTH, SOUTH_WEST_EAST, WEST_NORTH_SOUTH);
 
 		private final String name;
 		private final List<Direction> connections;

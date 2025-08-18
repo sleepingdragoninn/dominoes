@@ -4,7 +4,8 @@
 	"package": "dev.sisby.dominoes.mixin",
 	"compatibilityLevel": "JAVA_21",
 	"mixins": [
-		"AbstractPressurePlateBlockAccessor"
+		"AbstractPressurePlateBlockAccessor",
+		"FallingBlockEntityAccessor"
 	],
 	"client": [
 	],
