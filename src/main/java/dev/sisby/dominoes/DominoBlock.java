@@ -143,9 +143,13 @@ public class DominoBlock extends Block {
 		if (state.get(COLLAPSED) == Collapsed.NONE) {
 			for (Direction dir : state.get(SHAPE).connections()) {
 				BlockState neighbour = world.getBlockState(pos.offset(dir));
-				boolean forwards = dir == state.get(SHAPE).connections().getFirst();
-				if (neighbour.isOf(state.getBlock()) && neighbour.get(COLLAPSING) && neighbour.get(SHAPE) == state.get(SHAPE) && neighbour.get(COLLAPSED) == (forwards ? Collapsed.FORWARDS : Collapsed.BACKWARDS)) {
-					collapse(state, world, pos, null, forwards, false);
+				// if a connected collapse is happening
+				if (neighbour.isOf(state.getBlock()) && neighbour.get(COLLAPSING) && neighbour.get(SHAPE).connections().contains(dir.getOpposite())) {
+					// if the collapse is in the direction that affects us
+					if (neighbour.get(COLLAPSED) == (neighbour.get(SHAPE).connections().getFirst() != dir.getOpposite() ? Collapsed.FORWARDS : Collapsed.BACKWARDS)) {
+						boolean forwards = dir == state.get(SHAPE).connections().getFirst(); // whether we've been "hit" from the leading side
+						collapse(state, world, pos, null, forwards, false);
+					}
 				}
 			}
 		}
@@ -169,12 +173,13 @@ public class DominoBlock extends Block {
 	}
 
 	public enum Shape implements StringIdentifiable {
+		// falling "forwards" means falling from first direction towards second direction
 		NORTH_SOUTH("north_south", List.of(Direction.NORTH, Direction.SOUTH)),
 		EAST_WEST("east_west", List.of(Direction.EAST, Direction.WEST)),
-		SOUTH_EAST("south_east", List.of(Direction.SOUTH, Direction.EAST)),
+		NORTH_EAST("north_east", List.of(Direction.NORTH, Direction.EAST)),
+		SOUTH_EAST("south_east", List.of(Direction.EAST, Direction.SOUTH)),
 		SOUTH_WEST("south_west", List.of(Direction.SOUTH, Direction.WEST)),
-		NORTH_WEST("north_west", List.of(Direction.NORTH, Direction.WEST)),
-		NORTH_EAST("north_east", List.of(Direction.NORTH, Direction.EAST));
+		NORTH_WEST("north_west", List.of(Direction.WEST, Direction.NORTH));
 
 		private final String name;
 		private final List<Direction> connections;

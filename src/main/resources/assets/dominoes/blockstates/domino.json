@@ -35,7 +35,7 @@
 			"y": 0
 		},
 		"shape=south_east,collapsed=forwards": {
-			"model": "dominoes:block/domino_corner_backwards",
+			"model": "dominoes:block/domino_corner_forwards",
 			"y": 90
 		},
 		"shape=south_west,collapsed=forwards": {
@@ -43,7 +43,7 @@
 			"y": 180
 		},
 		"shape=north_west,collapsed=forwards": {
-			"model": "dominoes:block/domino_corner_backwards",
+			"model": "dominoes:block/domino_corner_forwards",
 			"y": 270
 		},
 		"shape=east_west,collapsed=backwards": {
@@ -58,7 +58,7 @@
 			"y": 0
 		},
 		"shape=south_east,collapsed=backwards": {
-			"model": "dominoes:block/domino_corner_forwards",
+			"model": "dominoes:block/domino_corner_backwards",
 			"y": 90
 		},
 		"shape=south_west,collapsed=backwards": {
@@ -66,7 +66,7 @@
 			"y": 180
 		},
 		"shape=north_west,collapsed=backwards": {
-			"model": "dominoes:block/domino_corner_forwards",
+			"model": "dominoes:block/domino_corner_backwards",
 			"y": 270
 		}
 	}
