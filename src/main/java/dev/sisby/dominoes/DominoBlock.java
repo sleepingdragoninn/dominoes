@@ -1,9 +1,11 @@
 package dev.sisby.dominoes;
 
+import dev.sisby.dominoes.mixin.AbstractPressurePlateBlockAccessor;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Falling;
 import net.minecraft.block.FallingBlock;
+import net.minecraft.block.PressurePlateBlock;
 import net.minecraft.block.ShapeContext;
 import net.minecraft.block.entity.PistonBlockEntity;
 import net.minecraft.entity.FallingBlockEntity;
@@ -133,7 +135,7 @@ public class DominoBlock extends Block implements Falling {
 	}
 
 	private void collapse(BlockState state, World world, BlockPos pos, PlayerEntity player, boolean forwards, boolean initial) {
-		if (initial) world.playSound(player, pos, SoundEvents.BLOCK_STONE_PLACE, SoundCategory.BLOCKS);
+		world.playSound(player, pos, initial ? SoundEvents.BLOCK_STONE_PLACE : SoundEvents.BLOCK_STONE_FALL, SoundCategory.BLOCKS);
 		world.setBlockState(pos, state.with(COLLAPSING, true).with(COLLAPSED, forwards ? Collapsed.FORWARDS : Collapsed.BACKWARDS), Block.NOTIFY_LISTENERS, 0);
 		world.scheduleBlockTick(pos, state.getBlock(), initial ? 5 : 2);
 	}
@@ -141,10 +143,19 @@ public class DominoBlock extends Block implements Falling {
 	@Override
 	protected void scheduledTick(BlockState state, ServerWorld world, BlockPos pos, Random random) {
 		if (state.get(COLLAPSING)) {
-			world.playSound(null, pos, SoundEvents.BLOCK_STONE_FALL, SoundCategory.BLOCKS);
 			for (Direction dir : state.get(SHAPE).connections()) {
 				for (int i = -1; i <= 1; i++) {
-					world.updateNeighbor(pos.offset(dir).offset(Direction.Axis.Y, i), state.getBlock(),  null);
+					BlockPos neighbourPos = pos.offset(dir).offset(Direction.Axis.Y, i);
+					if (world.getBlockState(neighbourPos).getBlock() instanceof PressurePlateBlock ppb && ppb instanceof AbstractPressurePlateBlockAccessor appba) {
+						BlockState newState = world.getBlockState(neighbourPos).with(PressurePlateBlock.POWERED, true);
+						world.setBlockState(neighbourPos, newState, NOTIFY_LISTENERS);
+						appba.invokeUpdateNeighbors(world, neighbourPos);
+						world.scheduleBlockRerenderIfNeeded(neighbourPos, state, newState);
+						world.playSound(null, pos, appba.getBlockSetType().pressurePlateClickOn(), SoundCategory.BLOCKS);
+						world.scheduleBlockTick(neighbourPos, ppb, 10);
+					} else {
+						world.updateNeighbor(neighbourPos, state.getBlock(),  null);
+					}
 				}
 			}
 			world.setBlockState(pos, state.with(COLLAPSING, false));
@@ -179,7 +190,7 @@ public class DominoBlock extends Block implements Falling {
 					}
 					// if a piston is being pushed
 					if (i == 0 && world.getBlockEntity(neighbourPos) instanceof PistonBlockEntity pbe && pbe.isExtending() && pbe.getFacing() == dir.getOpposite()) {
-						collapse(state, world, pos, null, forwards, true);
+						collapse(state, world, pos, null, forwards, false);
 					}
 				}
 			}

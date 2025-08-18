@@ -1,9 +1,10 @@
 {
 	"required": true,
 	"minVersion": "0.8",
-	"package": "sisby.dev.dominoes.mixin",
+	"package": "dev.sisby.dominoes.mixin",
 	"compatibilityLevel": "JAVA_21",
 	"mixins": [
+		"AbstractPressurePlateBlockAccessor"
 	],
 	"client": [
 	],
