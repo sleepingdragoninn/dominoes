@@ -36,13 +36,21 @@ public class DominoBlock extends Block {
 	protected static final VoxelShape VOXEL_EW_BACKWARDS = VoxelShapes.transform(VOXEL_NS_FORWARDS, DirectionTransformation.SWAP_XZ);
 	protected static final VoxelShape VOXEL_EW_FORWARDS = VoxelShapes.transform(VOXEL_NS_BACKWARDS, DirectionTransformation.SWAP_XZ);
 	protected static final VoxelShape VOXEL_NE = VoxelShapes.cuboid(0.5, 0, 0.125, 1, 0.875, 0.25);
-	protected static final VoxelShape VOXEL_SE = VoxelShapes.transform(VOXEL_NE, DirectionTransformation.ROT_90_Y_NEG);
-	protected static final VoxelShape VOXEL_SW = VoxelShapes.transform(VOXEL_SE, DirectionTransformation.ROT_90_Y_NEG);
-	protected static final VoxelShape VOXEL_NW = VoxelShapes.transform(VOXEL_SW, DirectionTransformation.ROT_90_Y_NEG);
+	protected static final VoxelShape VOXEL_ES = VoxelShapes.transform(VOXEL_NE, DirectionTransformation.ROT_90_Y_NEG);
+	protected static final VoxelShape VOXEL_SW = VoxelShapes.transform(VOXEL_ES, DirectionTransformation.ROT_90_Y_NEG);
+	protected static final VoxelShape VOXEL_WN = VoxelShapes.transform(VOXEL_SW, DirectionTransformation.ROT_90_Y_NEG);
 	protected static final VoxelShape VOXEL_NE_COLLAPSED = VoxelShapes.cuboid(0.5, 0, 0, 1, 0.125, 0.875);
-	protected static final VoxelShape VOXEL_SE_COLLAPSED = VoxelShapes.transform(VOXEL_NE_COLLAPSED, DirectionTransformation.ROT_90_Y_NEG);
-	protected static final VoxelShape VOXEL_SW_COLLAPSED = VoxelShapes.transform(VOXEL_SE_COLLAPSED, DirectionTransformation.ROT_90_Y_NEG);
-	protected static final VoxelShape VOXEL_NW_COLLAPSED = VoxelShapes.transform(VOXEL_SW_COLLAPSED, DirectionTransformation.ROT_90_Y_NEG);
+	protected static final VoxelShape VOXEL_ES_COLLAPSED = VoxelShapes.transform(VOXEL_NE_COLLAPSED, DirectionTransformation.ROT_90_Y_NEG);
+	protected static final VoxelShape VOXEL_SW_COLLAPSED = VoxelShapes.transform(VOXEL_ES_COLLAPSED, DirectionTransformation.ROT_90_Y_NEG);
+	protected static final VoxelShape VOXEL_WN_COLLAPSED = VoxelShapes.transform(VOXEL_SW_COLLAPSED, DirectionTransformation.ROT_90_Y_NEG);
+	protected static final VoxelShape VOXEL_NEW = VoxelShapes.union(VOXEL_NE, VoxelShapes.transform(VOXEL_NE, DirectionTransformation.INVERT_X));
+	protected static final VoxelShape VOXEL_ESN = VoxelShapes.transform(VOXEL_NEW, DirectionTransformation.ROT_90_Y_NEG);
+	protected static final VoxelShape VOXEL_SWE = VoxelShapes.transform(VOXEL_ESN, DirectionTransformation.ROT_90_Y_NEG);
+	protected static final VoxelShape VOXEL_WNS = VoxelShapes.transform(VOXEL_SWE, DirectionTransformation.ROT_90_Y_NEG);
+	protected static final VoxelShape VOXEL_NEW_COLLAPSED = VoxelShapes.union(VOXEL_NE_COLLAPSED, VoxelShapes.transform(VOXEL_NE_COLLAPSED, DirectionTransformation.INVERT_X));
+	protected static final VoxelShape VOXEL_ESN_COLLAPSED = VoxelShapes.transform(VOXEL_NEW_COLLAPSED, DirectionTransformation.ROT_90_Y_NEG);
+	protected static final VoxelShape VOXEL_SWE_COLLAPSED = VoxelShapes.transform(VOXEL_ESN_COLLAPSED, DirectionTransformation.ROT_90_Y_NEG);
+	protected static final VoxelShape VOXEL_WNS_COLLAPSED = VoxelShapes.transform(VOXEL_SWE_COLLAPSED, DirectionTransformation.ROT_90_Y_NEG);
 
 	public static final EnumProperty<Collapsed> COLLAPSED = EnumProperty.of("collapsed", Collapsed.class);
 	public static final EnumProperty<Shape> SHAPE = EnumProperty.of("shape", Shape.class);
@@ -58,51 +66,40 @@ public class DominoBlock extends Block {
 		builder.add(COLLAPSED, SHAPE, COLLAPSING);
 	}
 
-	@Override
-	public BlockState getPlacementState(ItemPlacementContext ctx) {
-		Shape shape = switch (ctx.getHorizontalPlayerFacing()) {
+	private static Shape getPlacementShape(ItemPlacementContext ctx) {
+		if (ctx.getSide() == Direction.UP) {
+			Vec3d offset = ctx.getHitPos().subtract(Vec3d.of(ctx.getBlockPos()));
+			if (offset.getX() < 0.125 && offset.getZ() < 0.125) return Shape.WEST_NORTH;
+			if (offset.getX() > 0.875 && offset.getZ() < 0.125) return Shape.NORTH_EAST;
+			if (offset.getX() > 0.875 && offset.getZ() > 0.875) return Shape.EAST_SOUTH;
+			if (offset.getX() < 0.125 && offset.getZ() > 0.875) return Shape.SOUTH_WEST;
+		}
+		return switch (ctx.getHorizontalPlayerFacing()) {
 			case DOWN, SOUTH, NORTH, UP -> Shape.NORTH_SOUTH;
 			case WEST, EAST -> Shape.EAST_WEST;
 		};
-		if (ctx.getSide() == Direction.UP) {
-			Vec3d offset = ctx.getHitPos().subtract(Vec3d.of(ctx.getBlockPos()));
-			if (offset.getX() < 0.125 && offset.getZ() < 0.125) shape = Shape.NORTH_WEST;
-			if (offset.getX() > 0.875 && offset.getZ() < 0.125) shape = Shape.NORTH_EAST;
-			if (offset.getX() > 0.875 && offset.getZ() > 0.875) shape = Shape.SOUTH_EAST;
-			if (offset.getX() < 0.125 && offset.getZ() > 0.875) shape = Shape.SOUTH_WEST;
+	}
+
+	@Override
+	protected boolean canReplace(BlockState state, ItemPlacementContext ctx) {
+		return !ctx.shouldCancelInteraction() && ctx.getStack().getItem() == this.asItem() && Shape.CORNERS.contains(state.get(SHAPE)) && Shape.CORNERS.get((Shape.CORNERS.indexOf(state.get(SHAPE)) - 1 + Shape.CORNERS.size()) % Shape.CORNERS.size()) == getPlacementShape(ctx) || super.canReplace(state, ctx);
+	}
+
+	@Override
+	public BlockState getPlacementState(ItemPlacementContext ctx) {
+		BlockState state = ctx.getWorld().getBlockState(ctx.getBlockPos());
+		if (state.isOf(this)) {
+			return state.with(SHAPE, Shape.DOUBLES.get(Shape.CORNERS.indexOf(state.get(SHAPE))));
 		}
-		return this.getDefaultState().with(SHAPE, shape);
+		return this.getDefaultState().with(SHAPE, getPlacementShape(ctx));
 	}
 
 	@Override
 	protected VoxelShape getOutlineShape(BlockState state, BlockView world, BlockPos pos, ShapeContext context) {
-		return switch (state.get(SHAPE)) {
-			case NORTH_SOUTH -> switch (state.get(COLLAPSED)) {
-				case NONE -> VOXEL_NS;
-				case FORWARDS -> VOXEL_NS_FORWARDS;
-				case BACKWARDS -> VOXEL_NS_BACKWARDS;
-			};
-			case EAST_WEST -> switch (state.get(COLLAPSED)) {
-				case NONE -> VOXEL_EW;
-				case FORWARDS -> VOXEL_EW_FORWARDS;
-				case BACKWARDS -> VOXEL_EW_BACKWARDS;
-			};
-			case SOUTH_EAST -> switch (state.get(COLLAPSED)) {
-				case NONE -> VOXEL_SE;
-				case FORWARDS, BACKWARDS -> VOXEL_SE_COLLAPSED;
-			};
-			case SOUTH_WEST -> switch (state.get(COLLAPSED)) {
-				case NONE -> VOXEL_SW;
-				case FORWARDS, BACKWARDS -> VOXEL_SW_COLLAPSED;
-			};
-			case NORTH_WEST -> switch (state.get(COLLAPSED)) {
-				case NONE -> VOXEL_NW;
-				case FORWARDS, BACKWARDS -> VOXEL_NW_COLLAPSED;
-			};
-			case NORTH_EAST -> switch (state.get(COLLAPSED)) {
-				case NONE -> VOXEL_NE;
-				case FORWARDS, BACKWARDS -> VOXEL_NE_COLLAPSED;
-			};
+		return switch (state.get(COLLAPSED)) {
+			case NONE -> state.get(SHAPE).getShapeStanding();
+			case FORWARDS -> state.get(SHAPE).getShapeForwards();
+			case BACKWARDS -> state.get(SHAPE).getShapeBackwards();
 		};
 	}
 
@@ -174,19 +171,35 @@ public class DominoBlock extends Block {
 
 	public enum Shape implements StringIdentifiable {
 		// falling "forwards" means falling from first direction towards second direction
-		NORTH_SOUTH("north_south", List.of(Direction.NORTH, Direction.SOUTH)),
-		EAST_WEST("east_west", List.of(Direction.EAST, Direction.WEST)),
-		NORTH_EAST("north_east", List.of(Direction.NORTH, Direction.EAST)),
-		SOUTH_EAST("south_east", List.of(Direction.EAST, Direction.SOUTH)),
-		SOUTH_WEST("south_west", List.of(Direction.SOUTH, Direction.WEST)),
-		NORTH_WEST("north_west", List.of(Direction.WEST, Direction.NORTH));
+		// straights
+		NORTH_SOUTH("north_south", List.of(Direction.NORTH, Direction.SOUTH), VOXEL_NS, VOXEL_NS_FORWARDS, VOXEL_NS_BACKWARDS),
+		EAST_WEST("east_west", List.of(Direction.EAST, Direction.WEST), VOXEL_EW, VOXEL_EW_FORWARDS, VOXEL_EW_BACKWARDS),
+		// corners
+		NORTH_EAST("north_east", List.of(Direction.NORTH, Direction.EAST), VOXEL_NE, VOXEL_NE_COLLAPSED, VOXEL_NE_COLLAPSED),
+		EAST_SOUTH("east_south", List.of(Direction.EAST, Direction.SOUTH), VOXEL_ES, VOXEL_ES_COLLAPSED, VOXEL_ES_COLLAPSED),
+		SOUTH_WEST("south_west", List.of(Direction.SOUTH, Direction.WEST), VOXEL_SW, VOXEL_SW_COLLAPSED, VOXEL_SW_COLLAPSED),
+		WEST_NORTH("west_north", List.of(Direction.WEST, Direction.NORTH), VOXEL_WN, VOXEL_WN_COLLAPSED, VOXEL_WN_COLLAPSED),
+		// doubles
+		NORTH_EAST_WEST("north_east_west", List.of(Direction.NORTH, Direction.EAST, Direction.WEST), VOXEL_NEW, VOXEL_NEW_COLLAPSED, VOXEL_NEW_COLLAPSED),
+		EAST_SOUTH_NORTH("east_south_north", List.of(Direction.EAST, Direction.SOUTH, Direction.NORTH), VOXEL_ESN, VOXEL_ESN_COLLAPSED, VOXEL_ESN_COLLAPSED),
+		SOUTH_WEST_EAST("south_west_east", List.of(Direction.SOUTH, Direction.WEST, Direction.EAST), VOXEL_SWE, VOXEL_SWE_COLLAPSED, VOXEL_SWE_COLLAPSED),
+		WEST_NORTH_SOUTH("west_north_south", List.of(Direction.WEST, Direction.NORTH, Direction.SOUTH), VOXEL_WNS, VOXEL_WNS_COLLAPSED, VOXEL_WNS_COLLAPSED);
+
+		public static final List<Shape> CORNERS = List.of(Shape.NORTH_EAST, Shape.EAST_SOUTH, Shape.SOUTH_WEST, Shape.WEST_NORTH);
+		public static final List<Shape> DOUBLES = List.of(Shape.NORTH_EAST_WEST, Shape.EAST_SOUTH_NORTH, Shape.SOUTH_WEST_EAST, Shape.WEST_NORTH_SOUTH);
 
 		private final String name;
 		private final List<Direction> connections;
+		private final VoxelShape shapeStanding;
+		private final VoxelShape shapeForwards;
+		private final VoxelShape shapeBackwards;
 
-		Shape(String name, List<Direction> connections) {
+		Shape(String name, List<Direction> connections, VoxelShape shapeStanding, VoxelShape shapeForwards, VoxelShape shapeBackwards) {
 			this.name = name;
 			this.connections = connections;
+			this.shapeStanding = shapeStanding;
+			this.shapeForwards = shapeForwards;
+			this.shapeBackwards = shapeBackwards;
 		}
 
 		@Override
@@ -196,6 +209,18 @@ public class DominoBlock extends Block {
 
 		public List<Direction> connections() {
 			return connections;
+		}
+
+		public VoxelShape getShapeStanding() {
+			return shapeStanding;
+		}
+
+		public VoxelShape getShapeForwards() {
+			return shapeForwards;
+		}
+
+		public VoxelShape getShapeBackwards() {
+			return shapeBackwards;
 		}
 	}
 }

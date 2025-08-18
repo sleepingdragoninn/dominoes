@@ -6,12 +6,49 @@
 			"entries": [
 				{
 					"type": "minecraft:item",
+					"functions": [
+						{
+							"add": false,
+							"conditions": [
+								{
+									"condition": "any_of",
+									"terms": [
+										{
+											"condition": "minecraft:block_state_property",
+											"block": "dominoes:domino",
+											"properties": {
+												"shape": "north_east_west"
+											}
+										},
+										{
+											"condition": "minecraft:block_state_property",
+											"block": "dominoes:domino",
+											"properties": {
+												"shape": "east_south_north"
+											}
+										},
+										{
+											"condition": "minecraft:block_state_property",
+											"block": "dominoes:domino",
+											"properties": {
+												"shape": "south_west_east"
+											}
+										},
+										{
+											"condition": "minecraft:block_state_property",
+											"block": "dominoes:domino",
+											"properties": {
+												"shape": "west_north_south"
+											}
+										}
+									]
+								}
+							],
+							"count": 2.0,
+							"function": "minecraft:set_count"
+						}
+					],
 					"name": "dominoes:domino"
-				}
-			],
-			"conditions": [
-				{
-					"condition": "minecraft:survives_explosion"
 				}
 			]
 		}
