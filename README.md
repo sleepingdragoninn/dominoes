@@ -19,6 +19,6 @@ dominoes can be crafted by combining **Black Terracotta** with **Wheat** and **W
 
 All mods are built on the work of many others.
 
-This mod was made for ModFest: Toybox! You can view ModFest events and modpacks at [modfest.net](https://modfest.net).
+<a href="https://modfest.net/toybox"><img src="https://raw.githubusercontent.com/ModFest/art/refs/heads/v2/badge/svg/toybox/compact.svg"></a>
 
 We're open to better ways to implement our mods. If you see something odd and have an idea, let us know! 

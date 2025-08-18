@@ -17,6 +17,7 @@ import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.DirectionTransformation;
+import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.math.random.Random;
 import net.minecraft.util.shape.VoxelShape;
 import net.minecraft.util.shape.VoxelShapes;
@@ -34,6 +35,15 @@ public class DominoBlock extends Block {
 	protected static final VoxelShape VOXEL_EW = VoxelShapes.transform(VOXEL_NS, DirectionTransformation.SWAP_XZ);
 	protected static final VoxelShape VOXEL_EW_BACKWARDS = VoxelShapes.transform(VOXEL_NS_FORWARDS, DirectionTransformation.SWAP_XZ);
 	protected static final VoxelShape VOXEL_EW_FORWARDS = VoxelShapes.transform(VOXEL_NS_BACKWARDS, DirectionTransformation.SWAP_XZ);
+	protected static final VoxelShape VOXEL_NE = VoxelShapes.cuboid(0.5, 0, 0.125, 1, 0.875, 0.25);
+	protected static final VoxelShape VOXEL_SE = VoxelShapes.transform(VOXEL_NE, DirectionTransformation.ROT_90_Y_NEG);
+	protected static final VoxelShape VOXEL_SW = VoxelShapes.transform(VOXEL_SE, DirectionTransformation.ROT_90_Y_NEG);
+	protected static final VoxelShape VOXEL_NW = VoxelShapes.transform(VOXEL_SW, DirectionTransformation.ROT_90_Y_NEG);
+	protected static final VoxelShape VOXEL_NE_COLLAPSED = VoxelShapes.cuboid(0.5, 0, 0, 1, 0.125, 0.875);
+	protected static final VoxelShape VOXEL_SE_COLLAPSED = VoxelShapes.transform(VOXEL_NE_COLLAPSED, DirectionTransformation.ROT_90_Y_NEG);
+	protected static final VoxelShape VOXEL_SW_COLLAPSED = VoxelShapes.transform(VOXEL_SE_COLLAPSED, DirectionTransformation.ROT_90_Y_NEG);
+	protected static final VoxelShape VOXEL_NW_COLLAPSED = VoxelShapes.transform(VOXEL_SW_COLLAPSED, DirectionTransformation.ROT_90_Y_NEG);
+
 	public static final EnumProperty<Collapsed> COLLAPSED = EnumProperty.of("collapsed", Collapsed.class);
 	public static final EnumProperty<Shape> SHAPE = EnumProperty.of("shape", Shape.class);
 	public static final BooleanProperty COLLAPSING = BooleanProperty.of("collapsing");
@@ -50,10 +60,18 @@ public class DominoBlock extends Block {
 
 	@Override
 	public BlockState getPlacementState(ItemPlacementContext ctx) {
-		return this.getDefaultState().with(SHAPE, switch (ctx.getHorizontalPlayerFacing()) {
+		Shape shape = switch (ctx.getHorizontalPlayerFacing()) {
 			case DOWN, SOUTH, NORTH, UP -> Shape.NORTH_SOUTH;
 			case WEST, EAST -> Shape.EAST_WEST;
-		});
+		};
+		if (ctx.getSide() == Direction.UP) {
+			Vec3d offset = ctx.getHitPos().subtract(Vec3d.of(ctx.getBlockPos()));
+			if (offset.getX() < 0.125 && offset.getZ() < 0.125) shape = Shape.NORTH_WEST;
+			if (offset.getX() > 0.875 && offset.getZ() < 0.125) shape = Shape.NORTH_EAST;
+			if (offset.getX() > 0.875 && offset.getZ() > 0.875) shape = Shape.SOUTH_EAST;
+			if (offset.getX() < 0.125 && offset.getZ() > 0.875) shape = Shape.SOUTH_WEST;
+		}
+		return this.getDefaultState().with(SHAPE, shape);
 	}
 
 	@Override
@@ -68,6 +86,22 @@ public class DominoBlock extends Block {
 				case NONE -> VOXEL_EW;
 				case FORWARDS -> VOXEL_EW_FORWARDS;
 				case BACKWARDS -> VOXEL_EW_BACKWARDS;
+			};
+			case SOUTH_EAST -> switch (state.get(COLLAPSED)) {
+				case NONE -> VOXEL_SE;
+				case FORWARDS, BACKWARDS -> VOXEL_SE_COLLAPSED;
+			};
+			case SOUTH_WEST -> switch (state.get(COLLAPSED)) {
+				case NONE -> VOXEL_SW;
+				case FORWARDS, BACKWARDS -> VOXEL_SW_COLLAPSED;
+			};
+			case NORTH_WEST -> switch (state.get(COLLAPSED)) {
+				case NONE -> VOXEL_NW;
+				case FORWARDS, BACKWARDS -> VOXEL_NW_COLLAPSED;
+			};
+			case NORTH_EAST -> switch (state.get(COLLAPSED)) {
+				case NONE -> VOXEL_NE;
+				case FORWARDS, BACKWARDS -> VOXEL_NE_COLLAPSED;
 			};
 		};
 	}
@@ -136,7 +170,11 @@ public class DominoBlock extends Block {
 
 	public enum Shape implements StringIdentifiable {
 		NORTH_SOUTH("north_south", List.of(Direction.NORTH, Direction.SOUTH)),
-		EAST_WEST("east_west", List.of(Direction.EAST, Direction.WEST));
+		EAST_WEST("east_west", List.of(Direction.EAST, Direction.WEST)),
+		SOUTH_EAST("south_east", List.of(Direction.SOUTH, Direction.EAST)),
+		SOUTH_WEST("south_west", List.of(Direction.SOUTH, Direction.WEST)),
+		NORTH_WEST("north_west", List.of(Direction.NORTH, Direction.WEST)),
+		NORTH_EAST("north_east", List.of(Direction.NORTH, Direction.EAST));
 
 		private final String name;
 		private final List<Direction> connections;
