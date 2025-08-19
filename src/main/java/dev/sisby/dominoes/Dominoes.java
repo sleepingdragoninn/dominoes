@@ -11,8 +11,6 @@ import net.minecraft.item.ItemGroup;
 import net.minecraft.item.ItemStack;
 import net.minecraft.registry.Registries;
 import net.minecraft.registry.Registry;
-import net.minecraft.registry.RegistryKey;
-import net.minecraft.registry.RegistryKeys;
 import net.minecraft.sound.BlockSoundGroup;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
@@ -23,17 +21,14 @@ public class Dominoes implements ModInitializer {
 	public static final String ID = "dominoes";
 	public static final Logger LOGGER = LoggerFactory.getLogger(ID);
 	public static final DominoBlock DOMINO_BLOCK = Registry.register(Registries.BLOCK, Identifier.of(ID, "domino"), new DominoBlock(AbstractBlock.Settings.create()
-		.registryKey(RegistryKey.of(RegistryKeys.BLOCK, Identifier.of(ID, "domino")))
 		.mapColor(MapColor.CLEAR)
 		.breakInstantly()
 		.pistonBehavior(PistonBehavior.DESTROY)
 		.sounds(BlockSoundGroup.STONE)
 	));
 	public static final Item UNFIRED_DOMINO_ITEM = Registry.register(Registries.ITEM, Identifier.of(ID, "unfired_domino"), new Item(new Item.Settings()
-		.registryKey(RegistryKey.of(RegistryKeys.ITEM, Identifier.of(ID, "unfired_domino")))
 	));
 	public static final BlockItem DOMINO_ITEM = Registry.register(Registries.ITEM, Identifier.of(ID, "domino"), new BlockItem(DOMINO_BLOCK, new Item.Settings()
-		.registryKey(RegistryKey.of(RegistryKeys.ITEM, Identifier.of(ID, "domino")))
 	));
 	public static final ItemGroup ITEM_GROUP = Registry.register(Registries.ITEM_GROUP, Identifier.of(ID, "items"), FabricItemGroup.builder()
 		.displayName(Text.translatable("itemGroup.%s.%s".formatted(ID, "items")))

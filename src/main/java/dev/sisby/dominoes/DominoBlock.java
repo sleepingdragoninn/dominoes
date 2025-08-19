@@ -4,8 +4,8 @@ import dev.sisby.dominoes.mixin.AbstractPressurePlateBlockAccessor;
 import dev.sisby.dominoes.mixin.FallingBlockEntityAccessor;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
-import net.minecraft.block.Falling;
 import net.minecraft.block.FallingBlock;
+import net.minecraft.block.LandingBlock;
 import net.minecraft.block.PressurePlateBlock;
 import net.minecraft.block.ShapeContext;
 import net.minecraft.block.entity.PistonBlockEntity;
@@ -31,12 +31,10 @@ import net.minecraft.util.shape.VoxelShapes;
 import net.minecraft.world.BlockView;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldView;
-import net.minecraft.world.block.WireOrientation;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
-public class DominoBlock extends Block implements Falling {
+public class DominoBlock extends Block implements LandingBlock {
 	protected static final VoxelShape VOXEL_NS = VoxelShapes.cuboid(0.25, 0, 0.4375, 0.75, 0.875, 0.5625);
 	protected static final VoxelShape VOXEL_NS_FORWARDS = VoxelShapes.cuboid(0.25, 0, 0.125, 0.75, 0.125, 1);
 	protected static final VoxelShape VOXEL_NS_BACKWARDS = VoxelShapes.transform(VOXEL_NS_FORWARDS, DirectionTransformation.ROT_180_FACE_XZ);
@@ -212,7 +210,7 @@ public class DominoBlock extends Block implements Falling {
 	}
 
 	@Override
-	protected void neighborUpdate(BlockState state, World world, BlockPos pos, Block sourceBlock, @Nullable WireOrientation wireOrientation, boolean notify) {
+	protected void neighborUpdate(BlockState state, World world, BlockPos pos, Block sourceBlock, BlockPos sourcePos, boolean notify) {
 		if (state.get(COLLAPSED) == Collapsed.NONE) {
 			for (Direction dir : state.get(SHAPE).connections()) {
 				boolean forwards = dir == state.get(SHAPE).connections().getFirst(); // whether this "hit" comes from the leading side
