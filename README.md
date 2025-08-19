@@ -27,4 +27,6 @@ All mods are built on the work of many others.
 
 <a href="https://modfest.net/toybox"><img alt="Made for Modfest: Toybox" src="https://raw.githubusercontent.com/ModFest/art/refs/heads/v2/badge/svg/toybox/compact.svg"></a>
 
+in ~28 hours start to finish! (0.5.0)
+
 We're open to better ways to implement our mods. If you see something odd and have an idea, let us know! 
