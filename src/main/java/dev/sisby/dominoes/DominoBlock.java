@@ -43,7 +43,13 @@ public class DominoBlock extends Block implements Falling {
 	protected static final VoxelShape VOXEL_EW = VoxelShapes.transform(VOXEL_NS, DirectionTransformation.SWAP_XZ);
 	protected static final VoxelShape VOXEL_EW_BACKWARDS = VoxelShapes.transform(VOXEL_NS_FORWARDS, DirectionTransformation.SWAP_XZ);
 	protected static final VoxelShape VOXEL_EW_FORWARDS = VoxelShapes.transform(VOXEL_NS_BACKWARDS, DirectionTransformation.SWAP_XZ);
-	protected static final VoxelShape VOXEL_NE = VoxelShapes.cuboid(0.5, 0, 0.125, 1, 0.875, 0.25);
+	protected static final VoxelShape VOXEL_NE = VoxelShapes.union(
+		VoxelShapes.cuboid(8.5 / 16.0, 0, 6 / 16.0, 10.5 / 16.0, 14 / 16.0, 8 / 16.0),
+		VoxelShapes.cuboid(9.5 / 16.0, 0, 5 / 16.0, 11.5 / 16.0, 14 / 16.0, 7 / 16.0),
+		VoxelShapes.cuboid(10.5 / 16.0, 0, 4 / 16.0, 12.5 / 16.0, 14 / 16.0, 6 / 16.0),
+		VoxelShapes.cuboid(11.5 / 16.0, 0, 3 / 16.0, 13.5 / 16.0, 14 / 16.0, 5 / 16.0),
+		VoxelShapes.cuboid(12.5 / 16.0, 0, 2 / 16.0, 14.5 / 16.0, 14 / 16.0, 4 / 16.0)
+	);
 	protected static final VoxelShape VOXEL_NS_STACK = VoxelShapes.union(
 		VoxelShapes.cuboid(0.25, 0, 0.125, 0.75, 0.875, 0.25),
 		VoxelShapes.cuboid(0.25, 0, 0.75, 0.75, 0.875, 0.875)
@@ -69,6 +75,9 @@ public class DominoBlock extends Block implements Falling {
 	public static final EnumProperty<Shape> SHAPE = EnumProperty.of("shape", Shape.class);
 	public static final BooleanProperty COLLAPSING = BooleanProperty.of("collapsing");
 
+	public static final double CORNER_TOLERANCE = 0.1875; // 3px
+	public static final double EDGE_TOLERANCE = 0.0625; // 1px
+
 	public DominoBlock(Settings settings) {
 		super(settings);
 		this.setDefaultState(this.stateManager.getDefaultState().with(COLLAPSED, Collapsed.NONE).with(SHAPE, Shape.NORTH_SOUTH).with(COLLAPSING, false));
@@ -82,13 +91,13 @@ public class DominoBlock extends Block implements Falling {
 	private static Shape getPlacementShape(ItemPlacementContext ctx, boolean canStack) {
 		if (ctx.getSide() == Direction.UP) {
 			Vec3d offset = ctx.getHitPos().subtract(Vec3d.of(ctx.getBlockPos()));
-			if (offset.getX() < 0.125 && offset.getZ() < 0.125) return Shape.WEST_NORTH;
-			if (offset.getX() > 0.875 && offset.getZ() < 0.125) return Shape.NORTH_EAST;
-			if (offset.getX() > 0.875 && offset.getZ() > 0.875) return Shape.EAST_SOUTH;
-			if (offset.getX() < 0.125 && offset.getZ() > 0.875) return Shape.SOUTH_WEST;
+			if (offset.getX() < CORNER_TOLERANCE && offset.getZ() < 1 - CORNER_TOLERANCE) return Shape.WEST_NORTH;
+			if (offset.getX() > 1 - CORNER_TOLERANCE && offset.getZ() < CORNER_TOLERANCE) return Shape.NORTH_EAST;
+			if (offset.getX() > 1 - CORNER_TOLERANCE && offset.getZ() > 1 - CORNER_TOLERANCE) return Shape.EAST_SOUTH;
+			if (offset.getX() < CORNER_TOLERANCE && offset.getZ() > 1 - CORNER_TOLERANCE) return Shape.SOUTH_WEST;
 			if (canStack) {
-				if (offset.getX() < 0.125 || offset.getX() > 0.875) return Shape.EAST_WEST_STACK;
-				if (offset.getZ() < 0.125 || offset.getZ() > 0.875) return Shape.NORTH_SOUTH_STACK;
+				if (offset.getX() < EDGE_TOLERANCE || offset.getX() > 1 - EDGE_TOLERANCE) return Shape.EAST_WEST_STACK;
+				if (offset.getZ() < EDGE_TOLERANCE || offset.getZ() > 1 - EDGE_TOLERANCE) return Shape.NORTH_SOUTH_STACK;
 			}
 		}
 		return switch (ctx.getHorizontalPlayerFacing()) {
@@ -145,6 +154,9 @@ public class DominoBlock extends Block implements Falling {
 			return ActionResult.SUCCESS;
 		} else if (state.get(SHAPE).connections().contains(hit.getSide())) {
 			collapse(state, world, pos, player, state.get(SHAPE).connections().getFirst() == hit.getSide(), true);
+			return ActionResult.SUCCESS;
+		} else if (state.get(SHAPE).connections().contains(hit.getSide().getOpposite()) && state.get(SHAPE).connections().size() == 2) { // handle corners nicer
+			collapse(state, world, pos, player, state.get(SHAPE).connections().getFirst() != hit.getSide().getOpposite(), true);
 			return ActionResult.SUCCESS;
 		}
 		return super.onUse(state, world, pos, player, hit);
