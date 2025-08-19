@@ -156,7 +156,7 @@ public class DominoBlock extends Block implements LandingBlock {
 						world.playSound(null, pos, appba.getBlockSetType().pressurePlateClickOn(), SoundCategory.BLOCKS);
 						world.scheduleBlockTick(neighbourPos, ppb, 10);
 					} else {
-						world.updateNeighbor(neighbourPos, state.getBlock(),  null);
+						world.updateNeighbor(neighbourPos, state.getBlock(),  pos);
 					}
 				}
 			}

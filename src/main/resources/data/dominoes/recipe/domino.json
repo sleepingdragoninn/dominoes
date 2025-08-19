@@ -2,7 +2,9 @@
 	"type": "minecraft:smelting",
 	"cookingtime": 20,
 	"experience": 0.01,
-	"ingredient": "dominoes:unfired_domino",
+	"ingredient": {
+		"item": "dominoes:unfired_domino"
+	},
 	"result": {
 		"id": "dominoes:domino"
 	}
