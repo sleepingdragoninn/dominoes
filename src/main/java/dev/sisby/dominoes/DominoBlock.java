@@ -91,7 +91,7 @@ public class DominoBlock extends Block implements Falling {
 	private static Shape getPlacementShape(ItemPlacementContext ctx, boolean canStack) {
 		if (ctx.getSide() == Direction.UP) {
 			Vec3d offset = ctx.getHitPos().subtract(Vec3d.of(ctx.getBlockPos()));
-			if (offset.getX() < CORNER_TOLERANCE && offset.getZ() < 1 - CORNER_TOLERANCE) return Shape.WEST_NORTH;
+			if (offset.getX() < CORNER_TOLERANCE && offset.getZ() < CORNER_TOLERANCE) return Shape.WEST_NORTH;
 			if (offset.getX() > 1 - CORNER_TOLERANCE && offset.getZ() < CORNER_TOLERANCE) return Shape.NORTH_EAST;
 			if (offset.getX() > 1 - CORNER_TOLERANCE && offset.getZ() > 1 - CORNER_TOLERANCE) return Shape.EAST_SOUTH;
 			if (offset.getX() < CORNER_TOLERANCE && offset.getZ() > 1 - CORNER_TOLERANCE) return Shape.SOUTH_WEST;
