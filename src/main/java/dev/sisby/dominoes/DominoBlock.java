@@ -35,9 +35,6 @@ import org.jetbrains.annotations.Nullable;
 import java.util.List;
 
 import static dev.sisby.dominoes.DominoShapes.*;
-import static dev.sisby.dominoes.DominoShapes.VOXEL_NORTH_SOUTH_STACK_FORWARDS;
-import static dev.sisby.dominoes.DominoShapes.VOXEL_SOUTH_WEST_EAST_BACKWARDS;
-import static dev.sisby.dominoes.DominoShapes.VOXEL_SOUTH_WEST_EAST_FORWARDS;
 
 public class DominoBlock extends Block implements Falling {
 	public static final EnumProperty<Collapsed> COLLAPSED = EnumProperty.of("collapsed", Collapsed.class);
