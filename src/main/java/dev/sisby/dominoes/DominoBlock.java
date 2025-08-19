@@ -32,10 +32,7 @@ import net.minecraft.world.WorldView;
 import net.minecraft.world.block.WireOrientation;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.Arrays;
 import java.util.List;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 import static dev.sisby.dominoes.DominoShapes.*;
 import static dev.sisby.dominoes.DominoShapes.VOXEL_NORTH_SOUTH_STACK_FORWARDS;
@@ -53,23 +50,6 @@ public class DominoBlock extends Block implements Falling {
 	public DominoBlock(Settings settings) {
 		super(settings);
 		this.setDefaultState(this.stateManager.getDefaultState().with(COLLAPSED, Collapsed.NONE).with(SHAPE, Shape.NORTH_SOUTH).with(COLLAPSING, false));
-		Dominoes.LOGGER.info("\n{}", Arrays.stream(Shape.values()).map(shape -> {
-			final StringBuilder s = new StringBuilder();
-			List<String> TYPES = List.of("STANDING", "FORWARDS", "BACKWARDS");
-			List<Function<Shape, VoxelShape>> GETTERS = List.of(Shape::getShapeStanding, Shape::getShapeForwards, Shape::getShapeBackwards);
-			for (int i = 0; i < 3; i++) {
-				s.append("\tpublic static final VoxelShape VOXEL_");
-				s.append(shape.name().toUpperCase());
-				s.append("_");
-				s.append(TYPES.get(i));
-				s.append(" = VoxelShapes.union(\n");
-				GETTERS.get(i).apply(shape).forEachBox((minX, minY, minZ, maxX, maxY, maxZ) -> s.append("\t\tVoxelShapes.cuboid(%s, %s, %s, %s, %s, %s),\n".formatted(minX, minY, minZ, maxX, maxY, maxZ)));
-				s.deleteCharAt(s.length() - 1);
-				s.deleteCharAt(s.length() - 1);
-				s.append("\n\t);\n");
-			}
-			return s.toString();
-		}).collect(Collectors.joining("")));
 	}
 
 	@Override
