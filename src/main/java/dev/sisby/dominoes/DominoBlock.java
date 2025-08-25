@@ -116,15 +116,6 @@ public class DominoBlock extends Block implements Falling {
 	}
 
 	@Override
-	protected void onEntityCollision(BlockState state, World world, BlockPos pos, Entity entity, EntityCollisionHandler handler) {
-		if (!world.isClient() && state.get(COLLAPSED) == Collapsed.NONE && entity.getType().isIn(Dominoes.COLLAPSING) && !(entity instanceof ProjectileEntity) && entity.getVelocity().horizontalLengthSquared() > 0.06) {
-			if (entity.getBoundingBox().expand(0.2).contains(Vec3d.of(pos).add(getCollisionShape(state, world, pos, ShapeContext.of(entity)).getBoundingBox().getCenter()))) {
-				collapseFromHit(state, world, pos, null, entity.getMovementDirection().getOpposite());
-			}
-		}
-	}
-
-	@Override
 	protected void onProjectileHit(World world, BlockState state, BlockHitResult hit, ProjectileEntity entity) {
 		if (state.get(COLLAPSED) == Collapsed.NONE && entity.getType().isIn(Dominoes.COLLAPSING)) {
 			collapseFromHit(state, world, hit.getBlockPos(), null, hit.getSide());
