@@ -9,8 +9,10 @@ import net.minecraft.block.LandingBlock;
 import net.minecraft.block.PressurePlateBlock;
 import net.minecraft.block.ShapeContext;
 import net.minecraft.block.entity.PistonBlockEntity;
+import net.minecraft.entity.Entity;
 import net.minecraft.entity.FallingBlockEntity;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.entity.projectile.ProjectileEntity;
 import net.minecraft.item.ItemPlacementContext;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundCategory;
@@ -111,16 +113,39 @@ public class DominoBlock extends Block implements LandingBlock {
 	}
 
 	@Override
+	protected void onEntityCollision(BlockState state, World world, BlockPos pos, Entity entity) {
+		if (!world.isClient() && state.get(COLLAPSED) == Collapsed.NONE && entity.getType().isIn(Dominoes.COLLAPSING) && !(entity instanceof ProjectileEntity) && entity.getVelocity().horizontalLengthSquared() > 0.06) {
+			if (entity.getBoundingBox().expand(0.2).contains(Vec3d.of(pos).add(getCollisionShape(state, world, pos, ShapeContext.of(entity)).getBoundingBox().getCenter()))) {
+				collapseFromHit(state, world, pos, null, entity.getMovementDirection().getOpposite());
+			}
+		}
+	}
+
+	@Override
+	protected void onProjectileHit(World world, BlockState state, BlockHitResult hit, ProjectileEntity entity) {
+		if (state.get(COLLAPSED) == Collapsed.NONE && entity.getType().isIn(Dominoes.COLLAPSING)) {
+			collapseFromHit(state, world, hit.getBlockPos(), null, hit.getSide());
+		}
+	}
+
+	private boolean collapseFromHit(BlockState state, World world, BlockPos pos, PlayerEntity player, Direction hitSide) {
+		if (state.get(SHAPE).connections().contains(hitSide)) {
+			collapse(state, world, pos, player, state.get(SHAPE).connections().getFirst() == hitSide, true);
+			return true;
+		} else if (state.get(SHAPE).connections().contains(hitSide.getOpposite()) && state.get(SHAPE).connections().size() == 2) { // handle corners nicer
+			collapse(state, world, pos, player, state.get(SHAPE).connections().getFirst() != hitSide.getOpposite(), true);
+			return true;
+		}
+		return false;
+	}
+
+	@Override
 	protected ActionResult onUse(BlockState state, World world, BlockPos pos, PlayerEntity player, BlockHitResult hit) {
 		if (state.get(COLLAPSED) != Collapsed.NONE) {
 			world.setBlockState(pos, state.with(COLLAPSED, Collapsed.NONE).with(COLLAPSING, false));
 			world.playSound(player, pos, SoundEvents.BLOCK_STONE_STEP, SoundCategory.BLOCKS);
 			return ActionResult.SUCCESS;
-		} else if (state.get(SHAPE).connections().contains(hit.getSide())) {
-			collapse(state, world, pos, player, state.get(SHAPE).connections().getFirst() == hit.getSide(), true);
-			return ActionResult.SUCCESS;
-		} else if (state.get(SHAPE).connections().contains(hit.getSide().getOpposite()) && state.get(SHAPE).connections().size() == 2) { // handle corners nicer
-			collapse(state, world, pos, player, state.get(SHAPE).connections().getFirst() != hit.getSide().getOpposite(), true);
+		} else if (collapseFromHit(state, world, pos, player, hit.getSide())) {
 			return ActionResult.SUCCESS;
 		}
 		return super.onUse(state, world, pos, player, hit);
