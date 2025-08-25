@@ -144,6 +144,7 @@ public class DominoBlock extends Block implements Falling {
 	}
 
 	protected void collapse(BlockState state, World world, BlockPos pos, PlayerEntity player, boolean forwards, boolean initial) {
+		if (state.get(COLLAPSED) != Collapsed.NONE) return;
 		Shape shape = state.get(SHAPE);
 		if (Shape.STACKS.contains(shape)) {
 			BlockPos ahead = pos.offset(shape.connections().get(forwards ? 1 : 0));
@@ -192,29 +193,23 @@ public class DominoBlock extends Block implements Falling {
 		if (world instanceof ServerWorld sw) checkFall(state, sw, pos);
 	}
 
-	protected boolean connectsWith(BlockState me, BlockState other) {
-		return me.isOf(other.getBlock());
-	}
-
 	@Override
 	protected void neighborUpdate(BlockState state, World world, BlockPos pos, Block sourceBlock, @Nullable WireOrientation wireOrientation, boolean notify) {
-		if (state.get(COLLAPSED) == Collapsed.NONE) {
-			for (Direction dir : state.get(SHAPE).connections()) {
-				boolean forwards = dir == state.get(SHAPE).connections().getFirst(); // whether this "hit" comes from the leading side
-				for (int i = -1; i <= 1; i++) {
-					BlockPos neighbourPos = pos.offset(dir).offset(Direction.Axis.Y, i);
-					BlockState neighbour = world.getBlockState(neighbourPos);
-					// if a connected collapse is happening
-					if (neighbour.getBlock() instanceof DominoBlock db && db.connectsWith(neighbour, state) && neighbour.get(COLLAPSING) && neighbour.get(SHAPE).connections().contains(dir.getOpposite())) {
-						// if the collapse is in the direction that affects us
-						if (neighbour.get(COLLAPSED) == (neighbour.get(SHAPE).connections().getFirst() != dir.getOpposite() ? Collapsed.FORWARDS : Collapsed.BACKWARDS)) {
-							collapse(state, world, pos, null, forwards, false);
-						}
-					}
-					// if a piston is being pushed
-					if (i == 0 && world.getBlockEntity(neighbourPos) instanceof PistonBlockEntity pbe && pbe.isExtending() && pbe.getFacing() == dir.getOpposite()) {
+		for (Direction dir : state.get(SHAPE).connections()) {
+			boolean forwards = dir == state.get(SHAPE).connections().getFirst(); // whether this "hit" comes from the leading side
+			for (int i = -1; i <= 1; i++) {
+				BlockPos neighbourPos = pos.offset(dir).offset(Direction.Axis.Y, i);
+				BlockState neighbour = world.getBlockState(neighbourPos);
+				// if a connected collapse is happening
+				if (neighbour.getBlock() instanceof DominoBlock && neighbour.get(COLLAPSING) && neighbour.get(SHAPE).connections().contains(dir.getOpposite())) {
+					// if the collapse is in the direction that affects us
+					if (neighbour.get(COLLAPSED) == (neighbour.get(SHAPE).connections().getFirst() != dir.getOpposite() ? Collapsed.FORWARDS : Collapsed.BACKWARDS)) {
 						collapse(state, world, pos, null, forwards, false);
 					}
+				}
+				// if a piston is being pushed
+				if (i == 0 && world.getBlockEntity(neighbourPos) instanceof PistonBlockEntity pbe && pbe.isExtending() && pbe.getFacing() == dir.getOpposite()) {
+					collapse(state, world, pos, null, forwards, false);
 				}
 			}
 		}
