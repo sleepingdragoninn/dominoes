@@ -2,5 +2,7 @@
 	"block.dominoes.domino": "Domino",
 	"item.dominoes.unfired_domino": "Unfired Domino",
 	"item.dominoes.domino": "Domino",
-	"itemGroup.dominoes.items": "Dominoes"
+	"itemGroup.dominoes.items": "Dominoes",
+	"lore.dominoes.domino": "A block that can be placed into rows. Knocking one down will take the rest with it!",
+	"lore.dominoes.unfired_domino": "A crafting ingredient that can be fired in a Furnace to make a Domino.",
 }
