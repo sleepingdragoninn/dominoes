@@ -9,8 +9,6 @@ import net.minecraft.block.FallingBlock;
 import net.minecraft.block.PressurePlateBlock;
 import net.minecraft.block.ShapeContext;
 import net.minecraft.block.entity.PistonBlockEntity;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityCollisionHandler;
 import net.minecraft.entity.FallingBlockEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.projectile.ProjectileEntity;
@@ -57,7 +55,7 @@ public class DominoBlock extends Block implements Falling {
 		builder.add(COLLAPSED, SHAPE, COLLAPSING);
 	}
 
-	private static Shape getPlacementShape(ItemPlacementContext ctx, boolean canStack) {
+	protected static Shape getPlacementShape(ItemPlacementContext ctx, boolean canStack) {
 		if (ctx.getSide() == Direction.UP) {
 			Vec3d offset = ctx.getHitPos().subtract(Vec3d.of(ctx.getBlockPos()));
 			if (offset.getX() < CORNER_TOLERANCE && offset.getZ() < CORNER_TOLERANCE) return Shape.WEST_NORTH;
@@ -122,7 +120,7 @@ public class DominoBlock extends Block implements Falling {
 		}
 	}
 
-	private boolean collapseFromHit(BlockState state, World world, BlockPos pos, PlayerEntity player, Direction hitSide) {
+	protected boolean collapseFromHit(BlockState state, World world, BlockPos pos, PlayerEntity player, Direction hitSide) {
 		if (state.get(SHAPE).connections().contains(hitSide)) {
 			collapse(state, world, pos, player, state.get(SHAPE).connections().getFirst() == hitSide, true);
 			return true;
@@ -145,7 +143,7 @@ public class DominoBlock extends Block implements Falling {
 		return super.onUse(state, world, pos, player, hit);
 	}
 
-	private void collapse(BlockState state, World world, BlockPos pos, PlayerEntity player, boolean forwards, boolean initial) {
+	protected void collapse(BlockState state, World world, BlockPos pos, PlayerEntity player, boolean forwards, boolean initial) {
 		Shape shape = state.get(SHAPE);
 		if (Shape.STACKS.contains(shape)) {
 			BlockPos ahead = pos.offset(shape.connections().get(forwards ? 1 : 0));
@@ -183,7 +181,7 @@ public class DominoBlock extends Block implements Falling {
 		}
 	}
 
-	private void checkFall(BlockState state, ServerWorld world, BlockPos pos) {
+	protected void checkFall(BlockState state, ServerWorld world, BlockPos pos) {
 		if (FallingBlock.canFallThrough(world.getBlockState(pos.down())) && pos.getY() >= world.getBottomY()) {
 			FallingBlockEntity.spawnFromBlock(world, pos, state);
 		}
@@ -192,6 +190,10 @@ public class DominoBlock extends Block implements Falling {
 	@Override
 	protected void onBlockAdded(BlockState state, World world, BlockPos pos, BlockState oldState, boolean notify) {
 		if (world instanceof ServerWorld sw) checkFall(state, sw, pos);
+	}
+
+	protected boolean connectsWith(BlockState me, BlockState other) {
+		return me.isOf(other.getBlock());
 	}
 
 	@Override
@@ -203,7 +205,7 @@ public class DominoBlock extends Block implements Falling {
 					BlockPos neighbourPos = pos.offset(dir).offset(Direction.Axis.Y, i);
 					BlockState neighbour = world.getBlockState(neighbourPos);
 					// if a connected collapse is happening
-					if (neighbour.isOf(state.getBlock()) && neighbour.get(COLLAPSING) && neighbour.get(SHAPE).connections().contains(dir.getOpposite())) {
+					if (neighbour.getBlock() instanceof DominoBlock db && db.connectsWith(neighbour, state) && neighbour.get(COLLAPSING) && neighbour.get(SHAPE).connections().contains(dir.getOpposite())) {
 						// if the collapse is in the direction that affects us
 						if (neighbour.get(COLLAPSED) == (neighbour.get(SHAPE).connections().getFirst() != dir.getOpposite() ? Collapsed.FORWARDS : Collapsed.BACKWARDS)) {
 							collapse(state, world, pos, null, forwards, false);
