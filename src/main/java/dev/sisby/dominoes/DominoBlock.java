@@ -9,6 +9,8 @@ import net.minecraft.block.FallingBlock;
 import net.minecraft.block.PressurePlateBlock;
 import net.minecraft.block.ShapeContext;
 import net.minecraft.block.entity.PistonBlockEntity;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityCollisionHandler;
 import net.minecraft.entity.FallingBlockEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.projectile.ProjectileEntity;
@@ -21,12 +23,14 @@ import net.minecraft.state.property.BooleanProperty;
 import net.minecraft.state.property.EnumProperty;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.StringIdentifiable;
+import net.minecraft.util.function.BooleanBiFunction;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.math.random.Random;
 import net.minecraft.util.shape.VoxelShape;
+import net.minecraft.util.shape.VoxelShapes;
 import net.minecraft.world.BlockView;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldView;
@@ -117,6 +121,28 @@ public class DominoBlock extends Block implements Falling {
 	protected void onProjectileHit(World world, BlockState state, BlockHitResult hit, ProjectileEntity entity) {
 		if (state.get(COLLAPSED) == Collapsed.NONE && entity.getType().isIn(Dominoes.COLLAPSING)) {
 			collapseFromHit(state, world, hit.getBlockPos(), null, hit.getSide());
+		}
+	}
+
+	@Override
+	protected void onEntityCollision(BlockState state, World world, BlockPos pos, Entity entity, EntityCollisionHandler handler) {
+		if (!world.isClient && state.get(COLLAPSED) == Collapsed.NONE && entity.getType().isIn(Dominoes.COLLAPSING)) {
+			Vec3d vel = entity.getVelocity();
+			// minimum velocity to fall over
+			if (vel.length() > 0.05) {
+				// check if the entity is against collision. based on BlockCollisionSpliterator
+				VoxelShape bounds = VoxelShapes.cuboid(entity.getBoundingBox().expand(0.1));
+				VoxelShape collisionShape = state.getCollisionShape(world, pos, ShapeContext.of(entity)).offset(pos);
+				if (VoxelShapes.matchesAnywhere(bounds, collisionShape, BooleanBiFunction.AND)) {
+					// entity is right up against the block. use the velocity to determine the direction to fall.
+					// discard the Y component because we only want horizontal directions
+					Direction motion = Direction.getFacing(vel.x, 0, vel.z);
+					if (motion.getAxis().isHorizontal()) {
+						Direction hitSide = motion.getOpposite();
+						collapseFromHit(state, world, pos, null, hitSide);
+					}
+				}
+			}
 		}
 	}
 
