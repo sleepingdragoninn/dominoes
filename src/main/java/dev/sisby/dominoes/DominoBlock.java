@@ -126,10 +126,10 @@ public class DominoBlock extends Block implements Falling {
 
 	@Override
 	protected void onEntityCollision(BlockState state, World world, BlockPos pos, Entity entity, EntityCollisionHandler handler) {
-		if (!world.isClient && state.get(COLLAPSED) == Collapsed.NONE && entity.getType().isIn(Dominoes.COLLAPSING)) {
+		if (!world.isClient && state.get(COLLAPSED) == Collapsed.NONE && entity.getType().isIn(Dominoes.COLLAPSING) && !(entity instanceof ProjectileEntity)) {
 			Vec3d vel = entity.getVelocity();
 			// minimum velocity to fall over
-			if (vel.length() > 0.05) {
+			if (vel.horizontalLength() > 0.05) {
 				// check if the entity is against collision. based on BlockCollisionSpliterator
 				VoxelShape bounds = VoxelShapes.cuboid(entity.getBoundingBox().expand(0.1));
 				VoxelShape collisionShape = state.getCollisionShape(world, pos, ShapeContext.of(entity)).offset(pos);
