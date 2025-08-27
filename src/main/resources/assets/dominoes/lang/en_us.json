@@ -3,6 +3,6 @@
 	"item.dominoes.unfired_domino": "Unfired Domino",
 	"item.dominoes.domino": "Domino",
 	"itemGroup.dominoes.items": "Dominoes",
-	"lore.dominoes.domino": "A block that can be placed into rows. Knocking one down will take the rest with it!",
+	"lore.dominoes.domino": "A block that collapses connected dominoes when interacted with. Can be stacked on a block edge to collapse further, or placed on the corner of a block to connect dominoes diagonally and create forks.",
 	"lore.dominoes.unfired_domino": "A crafting ingredient that can be fired in a Furnace to make a Domino."
 }
