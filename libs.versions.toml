@@ -1,11 +1,11 @@
 [versions]
-loom = "1.10.+"
+loom = "1.11.+"
 minotaur = "2.+"
 
-mc = "1.21.8"
-fl = "0.16.14"
-yarn = "1.21.8+build.1"
-fapi = "0.130.0+1.21.8"
+mc = "1.21.10"
+fl = "0.17.3"
+yarn = "1.21.10+build.1"
+fapi = "0.136.0+1.21.10"
 
 [plugins]
 loom = { id = "fabric-loom", version.ref = "loom" }
