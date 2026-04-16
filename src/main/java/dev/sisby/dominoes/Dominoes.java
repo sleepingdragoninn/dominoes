@@ -2,51 +2,51 @@ package dev.sisby.dominoes;
 
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.itemgroup.v1.FabricItemGroup;
-import net.minecraft.block.AbstractBlock;
-import net.minecraft.block.MapColor;
-import net.minecraft.block.piston.PistonBehavior;
-import net.minecraft.entity.EntityType;
-import net.minecraft.item.BlockItem;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemGroup;
-import net.minecraft.item.ItemStack;
-import net.minecraft.registry.Registries;
-import net.minecraft.registry.Registry;
-import net.minecraft.registry.RegistryKey;
-import net.minecraft.registry.RegistryKeys;
-import net.minecraft.registry.tag.TagKey;
-import net.minecraft.sound.BlockSoundGroup;
-import net.minecraft.text.Text;
-import net.minecraft.util.Identifier;
+import net.minecraft.core.Registry;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.tags.TagKey;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.CreativeModeTab;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.SoundType;
+import net.minecraft.world.level.block.state.BlockBehaviour;
+import net.minecraft.world.level.material.MapColor;
+import net.minecraft.world.level.material.PushReaction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class Dominoes implements ModInitializer {
 	public static final String ID = "dominoes";
 	public static final Logger LOGGER = LoggerFactory.getLogger(ID);
-	public static final DominoBlock DOMINO_BLOCK = Registry.register(Registries.BLOCK, Identifier.of(ID, "domino"), new DominoBlock(AbstractBlock.Settings.create()
-		.registryKey(RegistryKey.of(RegistryKeys.BLOCK, Identifier.of(ID, "domino")))
-		.mapColor(MapColor.CLEAR)
-		.breakInstantly()
-		.pistonBehavior(PistonBehavior.DESTROY)
-		.sounds(BlockSoundGroup.STONE)
+	public static final DominoBlock DOMINO_BLOCK = Registry.register(BuiltInRegistries.BLOCK, Identifier.fromNamespaceAndPath(ID, "domino"), new DominoBlock(BlockBehaviour.Properties.of()
+		.setId(ResourceKey.create(Registries.BLOCK, Identifier.fromNamespaceAndPath(ID, "domino")))
+		.mapColor(MapColor.NONE)
+		.instabreak()
+		.pushReaction(PushReaction.DESTROY)
+		.sound(SoundType.STONE)
 	));
-	public static final Item UNFIRED_DOMINO_ITEM = Registry.register(Registries.ITEM, Identifier.of(ID, "unfired_domino"), new Item(new Item.Settings()
-		.registryKey(RegistryKey.of(RegistryKeys.ITEM, Identifier.of(ID, "unfired_domino")))
+	public static final Item UNFIRED_DOMINO_ITEM = Registry.register(BuiltInRegistries.ITEM, Identifier.fromNamespaceAndPath(ID, "unfired_domino"), new Item(new Item.Properties()
+		.setId(ResourceKey.create(Registries.ITEM, Identifier.fromNamespaceAndPath(ID, "unfired_domino")))
 	));
-	public static final BlockItem DOMINO_ITEM = Registry.register(Registries.ITEM, Identifier.of(ID, "domino"), new BlockItem(DOMINO_BLOCK, new Item.Settings()
-		.registryKey(RegistryKey.of(RegistryKeys.ITEM, Identifier.of(ID, "domino")))
+	public static final BlockItem DOMINO_ITEM = Registry.register(BuiltInRegistries.ITEM, Identifier.fromNamespaceAndPath(ID, "domino"), new BlockItem(DOMINO_BLOCK, new Item.Properties()
+		.setId(ResourceKey.create(Registries.ITEM, Identifier.fromNamespaceAndPath(ID, "domino")))
 	));
-	public static final ItemGroup ITEM_GROUP = Registry.register(Registries.ITEM_GROUP, Identifier.of(ID, "items"), FabricItemGroup.builder()
-		.displayName(Text.translatable("itemGroup.%s.%s".formatted(ID, "items")))
+	public static final CreativeModeTab ITEM_GROUP = Registry.register(BuiltInRegistries.CREATIVE_MODE_TAB, Identifier.fromNamespaceAndPath(ID, "items"), FabricItemGroup.builder()
+		.title(Component.translatable("itemGroup.%s.%s".formatted(ID, "items")))
 		.icon(() -> new ItemStack(DOMINO_ITEM))
-		.entries((c, e) -> {
-			e.add(UNFIRED_DOMINO_ITEM);
-			e.add(DOMINO_ITEM);
+		.displayItems((c, e) -> {
+			e.accept(UNFIRED_DOMINO_ITEM);
+			e.accept(DOMINO_ITEM);
 		})
 		.build()
 	);
-	public static final TagKey<EntityType<?>> COLLAPSING = TagKey.of(RegistryKeys.ENTITY_TYPE, Identifier.of(ID, "collapsing"));
+	public static final TagKey<EntityType<?>> COLLAPSING = TagKey.create(Registries.ENTITY_TYPE, Identifier.fromNamespaceAndPath(ID, "collapsing"));
 
 	@Override
 	public void onInitialize() {

@@ -2,141 +2,141 @@ package dev.sisby.dominoes;
 
 import dev.sisby.dominoes.mixin.AbstractPressurePlateBlockAccessor;
 import dev.sisby.dominoes.mixin.FallingBlockEntityAccessor;
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.Falling;
-import net.minecraft.block.FallingBlock;
-import net.minecraft.block.PressurePlateBlock;
-import net.minecraft.block.ShapeContext;
-import net.minecraft.block.entity.PistonBlockEntity;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityCollisionHandler;
-import net.minecraft.entity.FallingBlockEntity;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.entity.projectile.ProjectileEntity;
-import net.minecraft.item.ItemPlacementContext;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.sound.SoundCategory;
-import net.minecraft.sound.SoundEvents;
-import net.minecraft.state.StateManager;
-import net.minecraft.state.property.BooleanProperty;
-import net.minecraft.state.property.EnumProperty;
-import net.minecraft.util.ActionResult;
-import net.minecraft.util.StringIdentifiable;
-import net.minecraft.util.function.BooleanBiFunction;
-import net.minecraft.util.hit.BlockHitResult;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Direction;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.util.math.random.Random;
-import net.minecraft.util.shape.VoxelShape;
-import net.minecraft.util.shape.VoxelShapes;
-import net.minecraft.world.BlockView;
-import net.minecraft.world.World;
-import net.minecraft.world.WorldView;
-import net.minecraft.world.block.WireOrientation;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.util.RandomSource;
+import net.minecraft.util.StringRepresentable;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.InsideBlockEffectApplier;
+import net.minecraft.world.entity.item.FallingBlockEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.projectile.Projectile;
+import net.minecraft.world.item.context.BlockPlaceContext;
+import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.LevelReader;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Fallable;
+import net.minecraft.world.level.block.FallingBlock;
+import net.minecraft.world.level.block.PressurePlateBlock;
+import net.minecraft.world.level.block.piston.PistonMovingBlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.StateDefinition;
+import net.minecraft.world.level.block.state.properties.BooleanProperty;
+import net.minecraft.world.level.block.state.properties.EnumProperty;
+import net.minecraft.world.level.redstone.Orientation;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.shapes.BooleanOp;
+import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.world.phys.shapes.Shapes;
+import net.minecraft.world.phys.shapes.VoxelShape;
 
 import static dev.sisby.dominoes.DominoShapes.*;
 
-public class DominoBlock extends Block implements Falling {
-	public static final EnumProperty<Collapsed> COLLAPSED = EnumProperty.of("collapsed", Collapsed.class);
-	public static final EnumProperty<Shape> SHAPE = EnumProperty.of("shape", Shape.class);
-	public static final BooleanProperty COLLAPSING = BooleanProperty.of("collapsing");
+public class DominoBlock extends Block implements Fallable {
+	public static final EnumProperty<Collapsed> COLLAPSED = EnumProperty.create("collapsed", Collapsed.class);
+	public static final EnumProperty<Shape> SHAPE = EnumProperty.create("shape", Shape.class);
+	public static final BooleanProperty COLLAPSING = BooleanProperty.create("collapsing");
 
 	public static final double CORNER_TOLERANCE = 0.1875; // 3px
 	public static final double EDGE_TOLERANCE = 0.0625; // 1px
 
-	public DominoBlock(Settings settings) {
+	public DominoBlock(Properties settings) {
 		super(settings);
-		this.setDefaultState(this.stateManager.getDefaultState().with(COLLAPSED, Collapsed.NONE).with(SHAPE, Shape.NORTH_SOUTH).with(COLLAPSING, false));
+		this.registerDefaultState(this.stateDefinition.any().setValue(COLLAPSED, Collapsed.NONE).setValue(SHAPE, Shape.NORTH_SOUTH).setValue(COLLAPSING, false));
 	}
 
 	@Override
-	protected void appendProperties(StateManager.Builder<Block, BlockState> builder) {
+	protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
 		builder.add(COLLAPSED, SHAPE, COLLAPSING);
 	}
 
-	protected static Shape getPlacementShape(ItemPlacementContext ctx, boolean canStack) {
-		if (ctx.getSide() == Direction.UP) {
-			Vec3d offset = ctx.getHitPos().subtract(Vec3d.of(ctx.getBlockPos()));
-			if (offset.getX() < CORNER_TOLERANCE && offset.getZ() < CORNER_TOLERANCE) return Shape.WEST_NORTH;
-			if (offset.getX() > 1 - CORNER_TOLERANCE && offset.getZ() < CORNER_TOLERANCE) return Shape.NORTH_EAST;
-			if (offset.getX() > 1 - CORNER_TOLERANCE && offset.getZ() > 1 - CORNER_TOLERANCE) return Shape.EAST_SOUTH;
-			if (offset.getX() < CORNER_TOLERANCE && offset.getZ() > 1 - CORNER_TOLERANCE) return Shape.SOUTH_WEST;
+	protected static Shape getPlacementShape(BlockPlaceContext ctx, boolean canStack) {
+		if (ctx.getClickedFace() == Direction.UP) {
+			Vec3 offset = ctx.getClickLocation().subtract(Vec3.atLowerCornerOf(ctx.getClickedPos()));
+			if (offset.x() < CORNER_TOLERANCE && offset.z() < CORNER_TOLERANCE) return Shape.WEST_NORTH;
+			if (offset.x() > 1 - CORNER_TOLERANCE && offset.z() < CORNER_TOLERANCE) return Shape.NORTH_EAST;
+			if (offset.x() > 1 - CORNER_TOLERANCE && offset.z() > 1 - CORNER_TOLERANCE) return Shape.EAST_SOUTH;
+			if (offset.x() < CORNER_TOLERANCE && offset.z() > 1 - CORNER_TOLERANCE) return Shape.SOUTH_WEST;
 			if (canStack) {
-				if (offset.getX() < EDGE_TOLERANCE || offset.getX() > 1 - EDGE_TOLERANCE) return Shape.EAST_WEST_STACK;
-				if (offset.getZ() < EDGE_TOLERANCE || offset.getZ() > 1 - EDGE_TOLERANCE) return Shape.NORTH_SOUTH_STACK;
+				if (offset.x() < EDGE_TOLERANCE || offset.x() > 1 - EDGE_TOLERANCE) return Shape.EAST_WEST_STACK;
+				if (offset.z() < EDGE_TOLERANCE || offset.z() > 1 - EDGE_TOLERANCE) return Shape.NORTH_SOUTH_STACK;
 			}
 		}
-		return switch (ctx.getHorizontalPlayerFacing()) {
+		return switch (ctx.getHorizontalDirection()) {
 			case DOWN, SOUTH, NORTH, UP -> Shape.NORTH_SOUTH;
 			case WEST, EAST -> Shape.EAST_WEST;
 		};
 	}
 
 	@Override
-	public void onLanding(World world, BlockPos pos, BlockState fallingBlockState, BlockState currentStateInPos, FallingBlockEntity fallingBlockEntity) {
+	public void onLand(Level world, BlockPos pos, BlockState fallingBlockState, BlockState currentStateInPos, FallingBlockEntity fallingBlockEntity) {
 		collapse(fallingBlockState, world, pos, null, true, true);
 	}
 
 	@Override
-	protected boolean canReplace(BlockState state, ItemPlacementContext ctx) {
-		if (super.canReplace(state, ctx)) return true;
-		if (!(!ctx.shouldCancelInteraction() && ctx.getStack().getItem() == this.asItem())) return false;
+	protected boolean canBeReplaced(BlockState state, BlockPlaceContext ctx) {
+		if (super.canBeReplaced(state, ctx)) return true;
+		if (!(!ctx.isSecondaryUseActive() && ctx.getItemInHand().getItem() == this.asItem())) return false;
 		Shape newShape = getPlacementShape(ctx, true);
-		return (Shape.CORNERS.contains(state.get(SHAPE)) && Shape.CORNERS.get((Shape.CORNERS.indexOf(state.get(SHAPE)) - 1 + Shape.CORNERS.size()) % Shape.CORNERS.size()) == newShape)
-				|| (Shape.STRAIGHTS.contains(state.get(SHAPE)) && Shape.STACKS.get(Shape.STRAIGHTS.indexOf(state.get(SHAPE))) == newShape);
+		return (Shape.CORNERS.contains(state.getValue(SHAPE)) && Shape.CORNERS.get((Shape.CORNERS.indexOf(state.getValue(SHAPE)) - 1 + Shape.CORNERS.size()) % Shape.CORNERS.size()) == newShape)
+				|| (Shape.STRAIGHTS.contains(state.getValue(SHAPE)) && Shape.STACKS.get(Shape.STRAIGHTS.indexOf(state.getValue(SHAPE))) == newShape);
 	}
 
 	@Override
-	protected boolean canPlaceAt(BlockState state, WorldView world, BlockPos pos) {
-		BlockPos blockPos = pos.down();
-		return world.getBlockState(blockPos).isSideSolidFullSquare(world, blockPos, Direction.UP);
+	protected boolean canSurvive(BlockState state, LevelReader world, BlockPos pos) {
+		BlockPos blockPos = pos.below();
+		return world.getBlockState(blockPos).isFaceSturdy(world, blockPos, Direction.UP);
 	}
 
 	@Override
-	public BlockState getPlacementState(ItemPlacementContext ctx) {
-		BlockState state = ctx.getWorld().getBlockState(ctx.getBlockPos());
-		if (state.isOf(this)) {
+	public BlockState getStateForPlacement(BlockPlaceContext ctx) {
+		BlockState state = ctx.getLevel().getBlockState(ctx.getClickedPos());
+		if (state.is(this)) {
 			Shape newShape = getPlacementShape(ctx, true);
-			if (Shape.CORNERS.contains(newShape)) newShape = Shape.DOUBLES.get(Shape.CORNERS.indexOf(state.get(SHAPE)));
-			return state.with(SHAPE, newShape);
+			if (Shape.CORNERS.contains(newShape)) newShape = Shape.DOUBLES.get(Shape.CORNERS.indexOf(state.getValue(SHAPE)));
+			return state.setValue(SHAPE, newShape);
 		}
-		return this.getDefaultState().with(SHAPE, getPlacementShape(ctx, false));
+		return this.defaultBlockState().setValue(SHAPE, getPlacementShape(ctx, false));
 	}
 
 	@Override
-	protected VoxelShape getOutlineShape(BlockState state, BlockView world, BlockPos pos, ShapeContext context) {
-		return switch (state.get(COLLAPSED)) {
-			case NONE -> state.get(SHAPE).getShapeStanding();
-			case FORWARDS -> state.get(SHAPE).getShapeForwards();
-			case BACKWARDS -> state.get(SHAPE).getShapeBackwards();
+	protected VoxelShape getShape(BlockState state, BlockGetter world, BlockPos pos, CollisionContext context) {
+		return switch (state.getValue(COLLAPSED)) {
+			case NONE -> state.getValue(SHAPE).getShapeStanding();
+			case FORWARDS -> state.getValue(SHAPE).getShapeForwards();
+			case BACKWARDS -> state.getValue(SHAPE).getShapeBackwards();
 		};
 	}
 
 	@Override
-	protected void onProjectileHit(World world, BlockState state, BlockHitResult hit, ProjectileEntity entity) {
-		if (state.get(COLLAPSED) == Collapsed.NONE && entity.getType().isIn(Dominoes.COLLAPSING)) {
-			collapseFromHit(state, world, hit.getBlockPos(), null, hit.getSide());
+	protected void onProjectileHit(Level world, BlockState state, BlockHitResult hit, Projectile entity) {
+		if (state.getValue(COLLAPSED) == Collapsed.NONE && entity.getType().is(Dominoes.COLLAPSING)) {
+			collapseFromHit(state, world, hit.getBlockPos(), null, hit.getDirection());
 		}
 	}
 
 	@Override
-	protected void onEntityCollision(BlockState state, World world, BlockPos pos, Entity entity, EntityCollisionHandler handler, boolean bl) {
-		if (!world.isClient() && state.get(COLLAPSED) == Collapsed.NONE && entity.getType().isIn(Dominoes.COLLAPSING) && !(entity instanceof ProjectileEntity)) {
-			Vec3d vel = entity.getVelocity();
+	protected void entityInside(BlockState state, Level world, BlockPos pos, Entity entity, InsideBlockEffectApplier handler, boolean bl) {
+		if (!world.isClientSide() && state.getValue(COLLAPSED) == Collapsed.NONE && entity.getType().is(Dominoes.COLLAPSING) && !(entity instanceof Projectile)) {
+			Vec3 vel = entity.getDeltaMovement();
 			// minimum velocity to fall over
-			if (vel.horizontalLength() > 0.05) {
+			if (vel.horizontalDistance() > 0.05) {
 				// check if the entity is against collision. based on BlockCollisionSpliterator
-				VoxelShape bounds = VoxelShapes.cuboid(entity.getBoundingBox().expand(0.1));
-				VoxelShape collisionShape = state.getCollisionShape(world, pos, ShapeContext.of(entity)).offset(pos);
-				if (VoxelShapes.matchesAnywhere(bounds, collisionShape, BooleanBiFunction.AND)) {
+				VoxelShape bounds = Shapes.create(entity.getBoundingBox().inflate(0.1));
+				VoxelShape collisionShape = state.getCollisionShape(world, pos, CollisionContext.of(entity)).move(pos);
+				if (Shapes.joinIsNotEmpty(bounds, collisionShape, BooleanOp.AND)) {
 					// entity is right up against the block. use the velocity to determine the direction to fall.
 					// discard the Y component because we only want horizontal directions
-					Direction motion = Direction.getFacing(vel.x, 0, vel.z);
+					Direction motion = Direction.getApproximateNearest(vel.x, 0, vel.z);
 					if (motion.getAxis().isHorizontal()) {
 						Direction hitSide = motion.getOpposite();
 						collapseFromHit(state, world, pos, null, hitSide);
@@ -146,103 +146,103 @@ public class DominoBlock extends Block implements Falling {
 		}
 	}
 
-	protected boolean collapseFromHit(BlockState state, World world, BlockPos pos, PlayerEntity player, Direction hitSide) {
-		if (state.get(SHAPE).connections().contains(hitSide)) {
-			collapse(state, world, pos, player, state.get(SHAPE).connections().getFirst() == hitSide, true);
+	protected boolean collapseFromHit(BlockState state, Level world, BlockPos pos, Player player, Direction hitSide) {
+		if (state.getValue(SHAPE).connections().contains(hitSide)) {
+			collapse(state, world, pos, player, state.getValue(SHAPE).connections().getFirst() == hitSide, true);
 			return true;
-		} else if (state.get(SHAPE).connections().contains(hitSide.getOpposite()) && state.get(SHAPE).connections().size() == 2) { // handle corners nicer
-			collapse(state, world, pos, player, state.get(SHAPE).connections().getFirst() != hitSide.getOpposite(), true);
+		} else if (state.getValue(SHAPE).connections().contains(hitSide.getOpposite()) && state.getValue(SHAPE).connections().size() == 2) { // handle corners nicer
+			collapse(state, world, pos, player, state.getValue(SHAPE).connections().getFirst() != hitSide.getOpposite(), true);
 			return true;
 		}
 		return false;
 	}
 
 	@Override
-	protected ActionResult onUse(BlockState state, World world, BlockPos pos, PlayerEntity player, BlockHitResult hit) {
-		if (state.get(COLLAPSED) != Collapsed.NONE) {
-			world.setBlockState(pos, state.with(COLLAPSED, Collapsed.NONE).with(COLLAPSING, false));
-			world.playSound(player, pos, SoundEvents.BLOCK_STONE_STEP, SoundCategory.BLOCKS);
-			return ActionResult.SUCCESS;
-		} else if (collapseFromHit(state, world, pos, player, hit.getSide())) {
-			return ActionResult.SUCCESS;
+	protected InteractionResult useWithoutItem(BlockState state, Level world, BlockPos pos, Player player, BlockHitResult hit) {
+		if (state.getValue(COLLAPSED) != Collapsed.NONE) {
+			world.setBlockAndUpdate(pos, state.setValue(COLLAPSED, Collapsed.NONE).setValue(COLLAPSING, false));
+			world.playSound(player, pos, SoundEvents.STONE_STEP, SoundSource.BLOCKS);
+			return InteractionResult.SUCCESS;
+		} else if (collapseFromHit(state, world, pos, player, hit.getDirection())) {
+			return InteractionResult.SUCCESS;
 		}
-		return super.onUse(state, world, pos, player, hit);
+		return super.useWithoutItem(state, world, pos, player, hit);
 	}
 
-	protected void collapse(BlockState state, World world, BlockPos pos, PlayerEntity player, boolean forwards, boolean initial) {
-		if (state.get(COLLAPSED) != Collapsed.NONE) return;
-		Shape shape = state.get(SHAPE);
+	protected void collapse(BlockState state, Level world, BlockPos pos, Player player, boolean forwards, boolean initial) {
+		if (state.getValue(COLLAPSED) != Collapsed.NONE) return;
+		Shape shape = state.getValue(SHAPE);
 		if (Shape.STACKS.contains(shape)) {
-			BlockPos ahead = pos.offset(shape.connections().get(forwards ? 1 : 0));
+			BlockPos ahead = pos.relative(shape.connections().get(forwards ? 1 : 0));
 
 			// spawn a falling domino ahead
 			FallingBlockEntity fallingBlockEntity = FallingBlockEntityAccessor.invokeConstructor(
-				world, ahead.getX() + 0.5, ahead.getY(), ahead.getZ() + 0.5, state.with(SHAPE, Shape.STRAIGHTS.get(Shape.STACKS.indexOf(shape))).with(COLLAPSING, true).with(COLLAPSED, forwards ? Collapsed.FORWARDS : Collapsed.BACKWARDS)
+				world, ahead.getX() + 0.5, ahead.getY(), ahead.getZ() + 0.5, state.setValue(SHAPE, Shape.STRAIGHTS.get(Shape.STACKS.indexOf(shape))).setValue(COLLAPSING, true).setValue(COLLAPSED, forwards ? Collapsed.FORWARDS : Collapsed.BACKWARDS)
 			);
-			world.spawnEntity(fallingBlockEntity);
+			world.addFreshEntity(fallingBlockEntity);
 		}
-		world.playSound(player, pos, initial ? SoundEvents.BLOCK_STONE_PLACE : SoundEvents.BLOCK_STONE_FALL, SoundCategory.BLOCKS);
-		world.setBlockState(pos, state.with(COLLAPSING, true).with(COLLAPSED, forwards ? Collapsed.FORWARDS : Collapsed.BACKWARDS).with(SHAPE, Shape.STACKS.contains(shape) ? Shape.STRAIGHTS.get(Shape.STACKS.indexOf(shape)) : shape), Block.NOTIFY_LISTENERS, 0);
-		world.scheduleBlockTick(pos, state.getBlock(), initial ? 5 : 2);
+		world.playSound(player, pos, initial ? SoundEvents.STONE_PLACE : SoundEvents.STONE_FALL, SoundSource.BLOCKS);
+		world.setBlock(pos, state.setValue(COLLAPSING, true).setValue(COLLAPSED, forwards ? Collapsed.FORWARDS : Collapsed.BACKWARDS).setValue(SHAPE, Shape.STACKS.contains(shape) ? Shape.STRAIGHTS.get(Shape.STACKS.indexOf(shape)) : shape), Block.UPDATE_CLIENTS, 0);
+		world.scheduleTick(pos, state.getBlock(), initial ? 5 : 2);
 	}
 
 	@Override
-	protected void scheduledTick(BlockState state, ServerWorld world, BlockPos pos, Random random) {
-		if (state.get(COLLAPSING)) {
-			for (Direction dir : state.get(SHAPE).connections()) {
+	protected void tick(BlockState state, ServerLevel world, BlockPos pos, RandomSource random) {
+		if (state.getValue(COLLAPSING)) {
+			for (Direction dir : state.getValue(SHAPE).connections()) {
 				for (int i = -1; i <= 1; i++) {
-					BlockPos neighbourPos = pos.offset(dir).offset(Direction.Axis.Y, i);
+					BlockPos neighbourPos = pos.relative(dir).relative(Direction.Axis.Y, i);
 					if (world.getBlockState(neighbourPos).getBlock() instanceof PressurePlateBlock ppb && ppb instanceof AbstractPressurePlateBlockAccessor appba) {
-						BlockState newState = world.getBlockState(neighbourPos).with(PressurePlateBlock.POWERED, true);
-						world.setBlockState(neighbourPos, newState, NOTIFY_LISTENERS);
-						appba.invokeUpdateNeighbors(world, neighbourPos);
-						world.scheduleBlockRerenderIfNeeded(neighbourPos, state, newState);
-						world.playSound(null, pos, appba.getBlockSetType().pressurePlateClickOn(), SoundCategory.BLOCKS);
-						world.scheduleBlockTick(neighbourPos, ppb, 10);
+						BlockState newState = world.getBlockState(neighbourPos).setValue(PressurePlateBlock.POWERED, true);
+						world.setBlock(neighbourPos, newState, UPDATE_CLIENTS);
+						appba.invokeUpdateNeighbours(world, neighbourPos);
+						world.setBlocksDirty(neighbourPos, state, newState);
+						world.playSound(null, pos, appba.getType().pressurePlateClickOn(), SoundSource.BLOCKS);
+						world.scheduleTick(neighbourPos, ppb, 10);
 					} else {
-						world.updateNeighbor(neighbourPos, state.getBlock(),  null);
+						world.neighborChanged(neighbourPos, state.getBlock(),  null);
 					}
 				}
 			}
-			world.setBlockState(pos, state.with(COLLAPSING, false));
+			world.setBlockAndUpdate(pos, state.setValue(COLLAPSING, false));
 		}
 	}
 
-	protected void checkFall(BlockState state, ServerWorld world, BlockPos pos) {
-		if (FallingBlock.canFallThrough(world.getBlockState(pos.down())) && pos.getY() >= world.getBottomY()) {
-			FallingBlockEntity.spawnFromBlock(world, pos, state);
+	protected void checkFall(BlockState state, ServerLevel world, BlockPos pos) {
+		if (FallingBlock.isFree(world.getBlockState(pos.below())) && pos.getY() >= world.getMinY()) {
+			FallingBlockEntity.fall(world, pos, state);
 		}
 	}
 
 	@Override
-	protected void onBlockAdded(BlockState state, World world, BlockPos pos, BlockState oldState, boolean notify) {
-		if (world instanceof ServerWorld sw) checkFall(state, sw, pos);
+	protected void onPlace(BlockState state, Level world, BlockPos pos, BlockState oldState, boolean notify) {
+		if (world instanceof ServerLevel sw) checkFall(state, sw, pos);
 	}
 
 	@Override
-	protected void neighborUpdate(BlockState state, World world, BlockPos pos, Block sourceBlock, @Nullable WireOrientation wireOrientation, boolean notify) {
-		for (Direction dir : state.get(SHAPE).connections()) {
-			boolean forwards = dir == state.get(SHAPE).connections().getFirst(); // whether this "hit" comes from the leading side
+	protected void neighborChanged(BlockState state, Level world, BlockPos pos, Block sourceBlock, @Nullable Orientation wireOrientation, boolean notify) {
+		for (Direction dir : state.getValue(SHAPE).connections()) {
+			boolean forwards = dir == state.getValue(SHAPE).connections().getFirst(); // whether this "hit" comes from the leading side
 			for (int i = -1; i <= 1; i++) {
-				BlockPos neighbourPos = pos.offset(dir).offset(Direction.Axis.Y, i);
+				BlockPos neighbourPos = pos.relative(dir).relative(Direction.Axis.Y, i);
 				BlockState neighbour = world.getBlockState(neighbourPos);
 				// if a connected collapse is happening
-				if (neighbour.getBlock() instanceof DominoBlock && neighbour.get(COLLAPSING) && neighbour.get(SHAPE).connections().contains(dir.getOpposite())) {
+				if (neighbour.getBlock() instanceof DominoBlock && neighbour.getValue(COLLAPSING) && neighbour.getValue(SHAPE).connections().contains(dir.getOpposite())) {
 					// if the collapse is in the direction that affects us
-					if (neighbour.get(COLLAPSED) == (neighbour.get(SHAPE).connections().getFirst() != dir.getOpposite() ? Collapsed.FORWARDS : Collapsed.BACKWARDS)) {
+					if (neighbour.getValue(COLLAPSED) == (neighbour.getValue(SHAPE).connections().getFirst() != dir.getOpposite() ? Collapsed.FORWARDS : Collapsed.BACKWARDS)) {
 						collapse(state, world, pos, null, forwards, false);
 					}
 				}
 				// if a piston is being pushed
-				if (i == 0 && world.getBlockEntity(neighbourPos) instanceof PistonBlockEntity pbe && pbe.isExtending() && pbe.getFacing() == dir.getOpposite()) {
+				if (i == 0 && world.getBlockEntity(neighbourPos) instanceof PistonMovingBlockEntity pbe && pbe.isExtending() && pbe.getDirection() == dir.getOpposite()) {
 					collapse(state, world, pos, null, forwards, false);
 				}
 			}
 		}
-		if (world instanceof ServerWorld sw) checkFall(state, sw, pos);
+		if (world instanceof ServerLevel sw) checkFall(state, sw, pos);
 	}
 
-	public enum Collapsed implements StringIdentifiable {
+	public enum Collapsed implements StringRepresentable {
 		NONE("none"),
 		FORWARDS("forwards"),
 		BACKWARDS("backwards");
@@ -254,12 +254,12 @@ public class DominoBlock extends Block implements Falling {
 		}
 
 		@Override
-		public String asString() {
+		public String getSerializedName() {
 			return name;
 		}
 	}
 
-	public enum Shape implements StringIdentifiable {
+	public enum Shape implements StringRepresentable {
 		// falling "forwards" means falling from first direction towards second direction
 		// straights
 		NORTH_SOUTH("north_south", List.of(Direction.NORTH, Direction.SOUTH), VOXEL_NORTH_SOUTH_STANDING, VOXEL_NORTH_SOUTH_FORWARDS, VOXEL_NORTH_SOUTH_BACKWARDS),
@@ -298,7 +298,7 @@ public class DominoBlock extends Block implements Falling {
 		}
 
 		@Override
-		public String asString() {
+		public String getSerializedName() {
 			return name;
 		}
 
