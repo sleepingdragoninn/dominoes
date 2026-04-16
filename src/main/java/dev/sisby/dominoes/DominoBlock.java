@@ -119,14 +119,14 @@ public class DominoBlock extends Block implements Fallable {
 
 	@Override
 	protected void onProjectileHit(Level world, BlockState state, BlockHitResult hit, Projectile entity) {
-		if (state.getValue(COLLAPSED) == Collapsed.NONE && entity.getType().is(Dominoes.COLLAPSING)) {
+		if (state.getValue(COLLAPSED) == Collapsed.NONE && entity.is(Dominoes.COLLAPSING)) {
 			collapseFromHit(state, world, hit.getBlockPos(), null, hit.getDirection());
 		}
 	}
 
 	@Override
 	protected void entityInside(BlockState state, Level world, BlockPos pos, Entity entity, InsideBlockEffectApplier handler, boolean bl) {
-		if (!world.isClientSide() && state.getValue(COLLAPSED) == Collapsed.NONE && entity.getType().is(Dominoes.COLLAPSING) && !(entity instanceof Projectile)) {
+		if (!world.isClientSide() && state.getValue(COLLAPSED) == Collapsed.NONE && entity.is(Dominoes.COLLAPSING) && !(entity instanceof Projectile)) {
 			Vec3 vel = entity.getDeltaMovement();
 			// minimum velocity to fall over
 			if (vel.horizontalDistance() > 0.05) {

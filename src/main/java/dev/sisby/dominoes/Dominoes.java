@@ -1,7 +1,7 @@
 package dev.sisby.dominoes;
 
 import net.fabricmc.api.ModInitializer;
-import net.fabricmc.fabric.api.itemgroup.v1.FabricItemGroup;
+import net.fabricmc.fabric.api.creativetab.v1.FabricCreativeModeTab;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
@@ -37,7 +37,7 @@ public class Dominoes implements ModInitializer {
 	public static final BlockItem DOMINO_ITEM = Registry.register(BuiltInRegistries.ITEM, Identifier.fromNamespaceAndPath(ID, "domino"), new BlockItem(DOMINO_BLOCK, new Item.Properties()
 		.setId(ResourceKey.create(Registries.ITEM, Identifier.fromNamespaceAndPath(ID, "domino")))
 	));
-	public static final CreativeModeTab ITEM_GROUP = Registry.register(BuiltInRegistries.CREATIVE_MODE_TAB, Identifier.fromNamespaceAndPath(ID, "items"), FabricItemGroup.builder()
+	public static final CreativeModeTab ITEM_GROUP = Registry.register(BuiltInRegistries.CREATIVE_MODE_TAB, Identifier.fromNamespaceAndPath(ID, "items"), FabricCreativeModeTab.builder()
 		.title(Component.translatable("itemGroup.%s.%s".formatted(ID, "items")))
 		.icon(() -> new ItemStack(DOMINO_ITEM))
 		.displayItems((c, e) -> {
